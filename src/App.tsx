@@ -21,6 +21,13 @@ import InventoryDashboard from "./pages/dashboards/InventoryDashboard";
 import BillingDashboard from "./pages/dashboards/BillingDashboard";
 import NurseDashboard from "./pages/dashboards/NurseDashboard";
 
+// Admin Pages
+import UserManagement from "./pages/admin/UserManagement";
+import Departments from "./pages/admin/Departments";
+import AdminReports from "./pages/admin/AdminReports";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminBillingOverview from "./pages/admin/AdminBillingOverview";
+
 // Receptionist Pages
 import PatientRegister from "./pages/receptionist/PatientRegister";
 import PatientSearchPage from "./pages/receptionist/PatientSearchPage";
@@ -39,19 +46,36 @@ import DoctorRadiologyRequests from "./pages/doctor/DoctorRadiologyRequests";
 // Pharmacy Pages
 import PharmacyPrescriptions from "./pages/pharmacy/PharmacyPrescriptions";
 import PharmacyInventory from "./pages/pharmacy/PharmacyInventory";
+import PharmacyAlerts from "./pages/pharmacy/PharmacyAlerts";
 
 // Laboratory Pages
 import LaboratoryRequests from "./pages/laboratory/LaboratoryRequests";
+import SampleCollection from "./pages/laboratory/SampleCollection";
+import ResultsEntry from "./pages/laboratory/ResultsEntry";
+import LabReports from "./pages/laboratory/LabReports";
 
 // Radiology Pages
 import RadiologyRequests from "./pages/radiology/RadiologyRequests";
+import UploadReports from "./pages/radiology/UploadReports";
+import CompletedReports from "./pages/radiology/CompletedReports";
 
 // Inventory Pages
 import InventoryItems from "./pages/inventory/InventoryItems";
+import AddStock from "./pages/inventory/AddStock";
+import StockAlerts from "./pages/inventory/StockAlerts";
+import Transactions from "./pages/inventory/Transactions";
+import InventoryReports from "./pages/inventory/InventoryReports";
+
+// Billing Pages
+import GenerateInvoice from "./pages/billing/GenerateInvoice";
+import Payments from "./pages/billing/Payments";
+import BillingReports from "./pages/billing/BillingReports";
 
 // Nurse Pages
 import NurseVitals from "./pages/nurse/NurseVitals";
 import NurseWards from "./pages/nurse/NurseWards";
+import MedicationRecords from "./pages/nurse/MedicationRecords";
+import CareNotes from "./pages/nurse/CareNotes";
 
 const queryClient = new QueryClient();
 
@@ -68,7 +92,11 @@ const App = () => (
             
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/*" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<UserManagement />} />
+            <Route path="/admin/departments" element={<Departments />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
+            <Route path="/admin/billing" element={<AdminBillingOverview />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
             
             {/* Receptionist Routes */}
             <Route path="/receptionist" element={<ReceptionistDashboard />} />
@@ -90,34 +118,43 @@ const App = () => (
             {/* Radiologist Routes */}
             <Route path="/radiologist" element={<RadiologistDashboard />} />
             <Route path="/radiologist/requests" element={<RadiologyRequests />} />
-            <Route path="/radiologist/*" element={<RadiologistDashboard />} />
+            <Route path="/radiologist/upload" element={<UploadReports />} />
+            <Route path="/radiologist/completed" element={<CompletedReports />} />
             
             {/* Laboratory Routes */}
             <Route path="/laboratory" element={<LaboratoryDashboard />} />
             <Route path="/laboratory/requests" element={<LaboratoryRequests />} />
-            <Route path="/laboratory/*" element={<LaboratoryDashboard />} />
+            <Route path="/laboratory/samples" element={<SampleCollection />} />
+            <Route path="/laboratory/results" element={<ResultsEntry />} />
+            <Route path="/laboratory/reports" element={<LabReports />} />
             
             {/* Pharmacy Routes */}
             <Route path="/pharmacy" element={<PharmacyDashboard />} />
             <Route path="/pharmacy/prescriptions" element={<PharmacyPrescriptions />} />
             <Route path="/pharmacy/dispense" element={<PharmacyPrescriptions />} />
             <Route path="/pharmacy/inventory" element={<PharmacyInventory />} />
-            <Route path="/pharmacy/*" element={<PharmacyDashboard />} />
+            <Route path="/pharmacy/alerts" element={<PharmacyAlerts />} />
             
             {/* Inventory Routes */}
             <Route path="/inventory" element={<InventoryDashboard />} />
             <Route path="/inventory/items" element={<InventoryItems />} />
-            <Route path="/inventory/*" element={<InventoryDashboard />} />
+            <Route path="/inventory/add" element={<AddStock />} />
+            <Route path="/inventory/alerts" element={<StockAlerts />} />
+            <Route path="/inventory/transactions" element={<Transactions />} />
+            <Route path="/inventory/reports" element={<InventoryReports />} />
             
             {/* Billing Routes */}
             <Route path="/billing" element={<BillingDashboard />} />
-            <Route path="/billing/*" element={<BillingDashboard />} />
+            <Route path="/billing/generate" element={<GenerateInvoice />} />
+            <Route path="/billing/payments" element={<Payments />} />
+            <Route path="/billing/reports" element={<BillingReports />} />
             
             {/* Nurse Routes */}
             <Route path="/nurse" element={<NurseDashboard />} />
             <Route path="/nurse/vitals" element={<NurseVitals />} />
             <Route path="/nurse/wards" element={<NurseWards />} />
-            <Route path="/nurse/*" element={<NurseDashboard />} />
+            <Route path="/nurse/medications" element={<MedicationRecords />} />
+            <Route path="/nurse/notes" element={<CareNotes />} />
             
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
