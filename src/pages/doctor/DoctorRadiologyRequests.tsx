@@ -2,9 +2,18 @@ import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -14,13 +23,27 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { toast } from 'sonner';
+import {
   Search,
-  Eye,
   CheckCircle,
   Clock,
   Scan,
   FileText,
   Image,
+  Plus,
 } from 'lucide-react';
 
 const mockRadiologyRequests = [
@@ -30,8 +53,48 @@ const mockRadiologyRequests = [
   { id: '4', requestNo: 'RAD-2025-0053', patientName: 'Sara Bibi', mrNo: 'MR-001237', test: 'CT Scan Brain', requestDate: '2025-01-31', status: 'in-progress', finding: '-' },
 ];
 
+const mockPatients = [
+  { mrNo: 'MR-001234', name: 'Muhammad Ali' },
+  { mrNo: 'MR-001235', name: 'Fatima Begum' },
+  { mrNo: 'MR-001236', name: 'Ahmed Khan' },
+];
+
+const availableTests = [
+  'Chest X-Ray PA',
+  'Chest X-Ray Lateral',
+  'Abdominal X-Ray',
+  'Ultrasound Abdomen',
+  'Ultrasound Pelvis',
+  'CT Scan Brain',
+  'CT Scan Chest',
+  'CT Scan Abdomen',
+  'MRI Brain',
+  'MRI Spine',
+  'MRI Knee',
+  'Echo Cardiogram',
+];
+
+const sampleRadReport = {
+  requestNo: 'RAD-2025-0054',
+  patientName: 'Ahmed Khan',
+  mrNo: 'MR-001236',
+  test: 'MRI Spine',
+  requestDate: '2025-01-31',
+  reportDate: '2025-01-31',
+  findings: 'There is evidence of disc bulge at L4-L5 level causing mild compression of the thecal sac. The spinal cord appears normal in signal intensity. No evidence of spinal canal stenosis. Vertebral body heights are maintained.',
+  impression: 'L4-L5 disc bulge with mild neural foraminal narrowing. Clinical correlation recommended.',
+  radiologist: 'Dr. Usman Malik',
+};
+
 const DoctorRadiologyRequests: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [isReportSheetOpen, setIsReportSheetOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  
+  // Request form state
+  const [selectedPatient, setSelectedPatient] = useState('');
+  const [selectedTests, setSelectedTests] = useState<string[]>([]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -43,6 +106,30 @@ const DoctorRadiologyRequests: React.FC = () => {
         return <Badge className="bg-primary"><Scan className="w-3 h-3 mr-1" /> In Progress</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const handleToggleTest = (test: string) => {
+    setSelectedTests(prev =>
+      prev.includes(test) ? prev.filter(t => t !== test) : [...prev, test]
+    );
+  };
+
+  const handleRequestTests = () => {
+    if (!selectedPatient || selectedTests.length === 0) {
+      toast.error('Please select patient and at least one test');
+      return;
+    }
+    toast.success(`${selectedTests.length} radiology test(s) requested successfully!`);
+    setIsRequestDialogOpen(false);
+    setSelectedPatient('');
+    setSelectedTests([]);
+  };
+
+  const handleViewReport = (req: any) => {
+    if (req.status === 'completed') {
+      setSelectedReport(sampleRadReport);
+      setIsReportSheetOpen(true);
     }
   };
 
@@ -60,6 +147,10 @@ const DoctorRadiologyRequests: React.FC = () => {
             <h2 className="text-2xl font-bold text-foreground">Radiology Requests</h2>
             <p className="text-muted-foreground">View status of imaging tests you've requested</p>
           </div>
+          <Button onClick={() => setIsRequestDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Request Imaging
+          </Button>
         </div>
 
         <Tabs defaultValue="all" className="space-y-4">
@@ -119,11 +210,11 @@ const DoctorRadiologyRequests: React.FC = () => {
                           <div className="flex justify-end gap-2">
                             {req.status === 'completed' && (
                               <>
-                                <Button variant="outline" size="sm">
+                                <Button variant="outline" size="sm" onClick={() => handleViewReport(req)}>
                                   <Image className="w-4 h-4 mr-1" />
                                   View Images
                                 </Button>
-                                <Button variant="outline" size="sm">
+                                <Button variant="outline" size="sm" onClick={() => handleViewReport(req)}>
                                   <FileText className="w-4 h-4 mr-1" />
                                   Report
                                 </Button>
@@ -155,6 +246,123 @@ const DoctorRadiologyRequests: React.FC = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Request Tests Dialog */}
+        <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Request Radiology Tests</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Select Patient *</Label>
+                <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Search patient by MR No" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mockPatients.map((p) => (
+                      <SelectItem key={p.mrNo} value={p.mrNo}>
+                        {p.name} - {p.mrNo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Select Imaging Tests *</Label>
+                <div className="grid grid-cols-2 gap-2 p-4 border rounded-lg max-h-60 overflow-y-auto">
+                  {availableTests.map((test) => (
+                    <div key={test} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={test}
+                        checked={selectedTests.includes(test)}
+                        onCheckedChange={() => handleToggleTest(test)}
+                      />
+                      <label htmlFor={test} className="text-sm cursor-pointer">
+                        {test}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                {selectedTests.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {selectedTests.length} test(s) selected
+                  </p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsRequestDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleRequestTests}>
+                <Scan className="w-4 h-4 mr-2" />
+                Request Tests
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Report Sheet */}
+        <Sheet open={isReportSheetOpen} onOpenChange={setIsReportSheetOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Radiology Report</SheetTitle>
+            </SheetHeader>
+            {selectedReport && (
+              <div className="mt-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Patient</p>
+                    <p className="font-medium">{selectedReport.patientName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">MR No</p>
+                    <p className="font-medium">{selectedReport.mrNo}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Test</p>
+                    <p className="font-medium">{selectedReport.test}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Report Date</p>
+                    <p className="font-medium">{selectedReport.reportDate}</p>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-6 bg-muted/10">
+                  <div className="flex items-center justify-center h-48 bg-muted/30 rounded-lg mb-4">
+                    <Image className="w-16 h-16 text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Images would be displayed here</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="p-4 bg-muted/30 rounded-lg">
+                    <h4 className="font-semibold mb-2">Findings</h4>
+                    <p className="text-sm">{selectedReport.findings}</p>
+                  </div>
+
+                  <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                    <h4 className="font-semibold mb-2 text-primary">Impression</h4>
+                    <p className="text-sm font-medium">{selectedReport.impression}</p>
+                  </div>
+                </div>
+
+                <div className="text-sm text-muted-foreground text-right">
+                  <p>Radiologist: {selectedReport.radiologist}</p>
+                </div>
+
+                <Button className="w-full" variant="outline">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Print Report
+                </Button>
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
       </div>
     </DashboardLayout>
   );

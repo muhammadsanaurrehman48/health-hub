@@ -12,6 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import PrescriptionTemplate from '@/components/templates/PrescriptionTemplate';
 import { toast } from 'sonner';
 import {
   Search,
@@ -20,6 +27,7 @@ import {
   Clock,
   Printer,
   Package,
+  Eye,
 } from 'lucide-react';
 
 const mockPrescriptions = [
@@ -31,6 +39,43 @@ const mockPrescriptions = [
 
 const PharmacyPrescriptions: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isViewSheetOpen, setIsViewSheetOpen] = useState(false);
+  const [selectedRx, setSelectedRx] = useState<any>(null);
+
+  const samplePrescriptionData = {
+    prescriptionNo: 'RX-456789',
+    date: '2025-02-01',
+    patient: {
+      name: 'Muhammad Ali',
+      mrNo: 'MR-001234',
+      forceNo: 'F-12345',
+      age: 45,
+      gender: 'Male',
+      phone: '0300-1234567',
+    },
+    doctor: {
+      name: 'Dr. Ahmad Khan',
+      specialization: 'Cardiology',
+      qualification: 'MBBS, FCPS',
+      regNo: 'PMC-12345',
+    },
+    vitals: {
+      bloodPressure: '130/85',
+      pulse: '78 bpm',
+      temperature: '98.6°F',
+      weight: '75 kg',
+    },
+    diagnosis: 'Essential Hypertension',
+    medicines: [
+      { name: 'Amlodipine', dosage: '5mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take in the morning' },
+      { name: 'Atorvastatin', dosage: '10mg', frequency: 'Once daily at night', duration: '30 days', instructions: 'Take after dinner' },
+      { name: 'Aspirin', dosage: '75mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take after breakfast' },
+    ],
+    labTests: [],
+    radiologyTests: [],
+    notes: 'Low salt diet recommended.',
+    followUpDate: '2025-03-01',
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -45,6 +90,11 @@ const PharmacyPrescriptions: React.FC = () => {
 
   const handleDispense = (rxNo: string) => {
     toast.success(`Prescription ${rxNo} dispensed successfully!`);
+  };
+
+  const handleViewPrescription = (rx: typeof mockPrescriptions[0]) => {
+    setSelectedRx(rx);
+    setIsViewSheetOpen(true);
   };
 
   const filteredPrescriptions = mockPrescriptions.filter((rx) =>
@@ -155,7 +205,11 @@ const PharmacyPrescriptions: React.FC = () => {
                             Dispense
                           </Button>
                         )}
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => handleViewPrescription(rx)}>
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                        <Button variant="ghost" size="icon">
                           <Printer className="w-4 h-4" />
                         </Button>
                       </div>
@@ -166,6 +220,18 @@ const PharmacyPrescriptions: React.FC = () => {
             </Table>
           </CardContent>
         </Card>
+
+        {/* View Prescription Sheet */}
+        <Sheet open={isViewSheetOpen} onOpenChange={setIsViewSheetOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-4xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Prescription Details</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6">
+              <PrescriptionTemplate data={samplePrescriptionData} />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </DashboardLayout>
   );

@@ -18,8 +18,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import BillingInvoiceTemplate from '@/components/templates/BillingInvoiceTemplate';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Search, Receipt } from 'lucide-react';
+import { Plus, Trash2, Search, Receipt, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
 const departments = ['OPD', 'IPD', 'Pharmacy', 'Laboratory', 'Radiology', 'Emergency', 'Surgery'];
@@ -49,6 +63,10 @@ const GenerateInvoice: React.FC = () => {
   const [patientName, setPatientName] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
   const [items, setItems] = useState<{ service: string; price: number; quantity: number }[]>([]);
+  const [isCustomItemDialogOpen, setIsCustomItemDialogOpen] = useState(false);
+  const [isInvoiceSheetOpen, setIsInvoiceSheetOpen] = useState(false);
+  const [customTitle, setCustomTitle] = useState('');
+  const [customPrice, setCustomPrice] = useState('');
 
   const handleAddItem = (service: string, price: number) => {
     const existing = items.find(i => i.service === service);
@@ -57,6 +75,23 @@ const GenerateInvoice: React.FC = () => {
     } else {
       setItems([...items, { service, price, quantity: 1 }]);
     }
+  };
+
+  const handleAddCustomItem = () => {
+    if (!customTitle || !customPrice) {
+      toast.error('Please enter title and price');
+      return;
+    }
+    const price = parseFloat(customPrice);
+    if (isNaN(price) || price <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    handleAddItem(customTitle, price);
+    setIsCustomItemDialogOpen(false);
+    setCustomTitle('');
+    setCustomPrice('');
+    toast.success('Custom item added');
   };
 
   const handleRemoveItem = (service: string) => {
@@ -72,7 +107,38 @@ const GenerateInvoice: React.FC = () => {
       toast.error('Please fill patient details and add items');
       return;
     }
+    setIsInvoiceSheetOpen(true);
     toast.success('Invoice generated successfully');
+  };
+
+  const sampleInvoiceData = {
+    invoiceNo: 'INV-2025-00456',
+    date: new Date().toLocaleDateString(),
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+    status: 'pending' as const,
+    patient: {
+      name: patientName || 'Patient Name',
+      mrNo: patientMR || 'MR-XXXXXX',
+      forceNo: 'F-12345',
+      phone: '0300-1234567',
+      address: 'Rawalpindi, Pakistan',
+    },
+    items: items.map(item => ({
+      description: item.service,
+      department: selectedDept || 'General',
+      quantity: item.quantity,
+      unitPrice: item.price,
+      total: item.price * item.quantity,
+    })),
+    subtotal,
+    discount: 0,
+    tax,
+    grandTotal: total,
+    amountPaid: 0,
+    balance: total,
+    paymentMethod: 'Cash',
+    paymentRef: '',
+    createdBy: 'Billing Staff',
   };
 
   return (
@@ -121,7 +187,13 @@ const GenerateInvoice: React.FC = () => {
             {/* Add Services */}
             <Card>
               <CardHeader>
-                <CardTitle>Add Services</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Add Services</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => setIsCustomItemDialogOpen(true)}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Custom Item
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -152,6 +224,12 @@ const GenerateInvoice: React.FC = () => {
                       </Button>
                     ))}
                   </div>
+                )}
+
+                {!selectedDept && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Select a department to see predefined services, or add custom items
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -200,9 +278,18 @@ const GenerateInvoice: React.FC = () => {
                     </div>
                   </div>
 
-                  <Button className="w-full" onClick={handleGenerateInvoice}>
-                    Generate Invoice
-                  </Button>
+                  <div className="space-y-2">
+                    <Button className="w-full" onClick={handleGenerateInvoice}>
+                      <Receipt className="w-4 h-4 mr-2" />
+                      Generate Invoice
+                    </Button>
+                    {patientMR && patientName && (
+                      <Button variant="outline" className="w-full" onClick={() => setIsInvoiceSheetOpen(true)}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        Preview Invoice
+                      </Button>
+                    )}
+                  </div>
                 </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -213,6 +300,55 @@ const GenerateInvoice: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Custom Item Dialog */}
+        <Dialog open={isCustomItemDialogOpen} onOpenChange={setIsCustomItemDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Custom Item</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Item Title *</Label>
+                <Input
+                  placeholder="e.g., Consultation, Special Procedure"
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Price (Rs.) *</Label>
+                <Input
+                  type="number"
+                  placeholder="Enter amount"
+                  value={customPrice}
+                  onChange={(e) => setCustomPrice(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCustomItemDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddCustomItem}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Item
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Invoice Preview Sheet */}
+        <Sheet open={isInvoiceSheetOpen} onOpenChange={setIsInvoiceSheetOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-4xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Invoice Preview</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6">
+              <BillingInvoiceTemplate data={sampleInvoiceData} />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </DashboardLayout>
   );
