@@ -23,16 +23,23 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import TokenTemplate from '@/components/templates/TokenTemplate';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
   Ticket,
   Plus,
   Search,
   Printer,
-  User,
-  Building2,
   Clock,
   BedDouble,
+  Eye,
 } from 'lucide-react';
 
 const mockOPDTokens = [
@@ -50,6 +57,8 @@ const EntriesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
   const [isIPDDialogOpen, setIsIPDDialogOpen] = useState(false);
+  const [isTokenSheetOpen, setIsTokenSheetOpen] = useState(false);
+  const [selectedToken, setSelectedToken] = useState<any>(null);
 
   // Token form
   const [tokenMrNo, setTokenMrNo] = useState('');
@@ -74,6 +83,20 @@ const EntriesPage: React.FC = () => {
       description: 'Admission No: IPD-2025-003',
     });
     setIsIPDDialogOpen(false);
+  };
+
+  const handleViewToken = (token: typeof mockOPDTokens[0]) => {
+    setSelectedToken({
+      tokenNo: token.tokenNo,
+      patientName: token.patientName,
+      mrNo: token.mrNo,
+      department: token.department,
+      doctor: token.doctor,
+      date: format(new Date(), 'dd/MM/yyyy'),
+      time: token.time,
+      type: 'OPD' as const,
+    });
+    setIsTokenSheetOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -216,8 +239,11 @@ const EntriesPage: React.FC = () => {
                         </TableCell>
                         <TableCell>{getStatusBadge(token.status)}</TableCell>
                         <TableCell>
-                          <div className="flex justify-end">
-                            <Button variant="ghost" size="icon">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleViewToken(token)}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleViewToken(token)}>
                               <Printer className="w-4 h-4" />
                             </Button>
                           </div>
@@ -346,6 +372,18 @@ const EntriesPage: React.FC = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Token View/Print Sheet */}
+        <Sheet open={isTokenSheetOpen} onOpenChange={setIsTokenSheetOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>OPD Token</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6">
+              {selectedToken && <TokenTemplate data={selectedToken} />}
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </DashboardLayout>
   );
