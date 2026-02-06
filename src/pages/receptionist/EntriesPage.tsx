@@ -43,14 +43,14 @@ import {
 } from 'lucide-react';
 
 const mockOPDTokens = [
-  { id: '1', tokenNo: 'OPD-045', patientName: 'Muhammad Ali', mrNo: 'MR-001234', department: 'Cardiology', doctor: 'Dr. Ahmad Khan', time: '10:15 AM', status: 'waiting' },
-  { id: '2', tokenNo: 'OPD-046', patientName: 'Fatima Begum', mrNo: 'MR-001235', department: 'Pediatrics', doctor: 'Dr. Sara Ali', time: '10:20 AM', status: 'in-progress' },
-  { id: '3', tokenNo: 'OPD-047', patientName: 'Ahmed Khan', mrNo: 'MR-001236', department: 'Orthopedics', doctor: 'Dr. Usman Malik', time: '10:30 AM', status: 'completed' },
+  { id: '1', tokenNo: 'OPD-045', patientName: 'Muhammad Ali', forceNo: 'F-12345', department: 'Cardiology', doctor: 'Dr. Ahmad Khan', time: '10:15 AM', status: 'waiting' },
+  { id: '2', tokenNo: 'OPD-046', patientName: 'Fatima Begum', forceNo: 'F-12346', department: 'Pediatrics', doctor: 'Dr. Sara Ali', time: '10:20 AM', status: 'in-progress' },
+  { id: '3', tokenNo: 'OPD-047', patientName: 'Ahmed Khan', forceNo: 'F-12347', department: 'Orthopedics', doctor: 'Dr. Usman Malik', time: '10:30 AM', status: 'completed' },
 ];
 
 const mockIPDEntries = [
-  { id: '1', admissionNo: 'IPD-2025-001', patientName: 'Sara Bibi', mrNo: 'MR-001237', ward: 'General Ward A', bed: 'A-12', doctor: 'Dr. Ahmad Khan', admitDate: '2025-01-28', status: 'admitted' },
-  { id: '2', admissionNo: 'IPD-2025-002', patientName: 'Usman Ali', mrNo: 'MR-001238', ward: 'ICU', bed: 'ICU-3', doctor: 'Dr. Fatima Bibi', admitDate: '2025-01-30', status: 'critical' },
+  { id: '1', admissionNo: 'IPD-2025-001', patientName: 'Sara Bibi', forceNo: 'F-12348', ward: 'General Ward A', bed: 'A-12', doctor: 'Dr. Ahmad Khan', admitDate: '2025-01-28', status: 'admitted' },
+  { id: '2', admissionNo: 'IPD-2025-002', patientName: 'Usman Ali', forceNo: 'F-12349', ward: 'ICU', bed: 'ICU-3', doctor: 'Dr. Fatima Bibi', admitDate: '2025-01-30', status: 'critical' },
 ];
 
 const EntriesPage: React.FC = () => {
@@ -61,12 +61,12 @@ const EntriesPage: React.FC = () => {
   const [selectedToken, setSelectedToken] = useState<any>(null);
 
   // Token form
-  const [tokenMrNo, setTokenMrNo] = useState('');
+  const [tokenForceNo, setTokenForceNo] = useState('');
   const [tokenDepartment, setTokenDepartment] = useState('');
   const [tokenDoctor, setTokenDoctor] = useState('');
 
   // IPD form
-  const [ipdMrNo, setIpdMrNo] = useState('');
+  const [ipdForceNo, setIpdForceNo] = useState('');
   const [ipdWard, setIpdWard] = useState('');
   const [ipdBed, setIpdBed] = useState('');
   const [ipdDoctor, setIpdDoctor] = useState('');
@@ -89,7 +89,7 @@ const EntriesPage: React.FC = () => {
     setSelectedToken({
       tokenNo: token.tokenNo,
       patientName: token.patientName,
-      mrNo: token.mrNo,
+      forceNo: token.forceNo,
       department: token.department,
       doctor: token.doctor,
       date: format(new Date(), 'dd/MM/yyyy'),
@@ -139,7 +139,7 @@ const EntriesPage: React.FC = () => {
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name or MR No"
+                  placeholder="Search by name or Force No"
                   className="pl-10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -158,11 +158,11 @@ const EntriesPage: React.FC = () => {
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label>Patient MR No</Label>
+                      <Label>Patient Force No</Label>
                       <Input
-                        placeholder="Enter MR No"
-                        value={tokenMrNo}
-                        onChange={(e) => setTokenMrNo(e.target.value)}
+                        placeholder="Enter Force No"
+                        value={tokenForceNo}
+                        onChange={(e) => setTokenForceNo(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -215,7 +215,7 @@ const EntriesPage: React.FC = () => {
                     <TableRow>
                       <TableHead>Token No</TableHead>
                       <TableHead>Patient</TableHead>
-                      <TableHead>MR No</TableHead>
+                      <TableHead>Force No</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Doctor</TableHead>
                       <TableHead>Time</TableHead>
@@ -228,7 +228,7 @@ const EntriesPage: React.FC = () => {
                       <TableRow key={token.id}>
                         <TableCell className="font-bold text-primary">{token.tokenNo}</TableCell>
                         <TableCell className="font-medium">{token.patientName}</TableCell>
-                        <TableCell>{token.mrNo}</TableCell>
+                        <TableCell>{token.forceNo}</TableCell>
                         <TableCell>{token.department}</TableCell>
                         <TableCell>{token.doctor}</TableCell>
                         <TableCell>
@@ -279,11 +279,11 @@ const EntriesPage: React.FC = () => {
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label>Patient MR No</Label>
+                      <Label>Patient Force No</Label>
                       <Input
-                        placeholder="Enter MR No"
-                        value={ipdMrNo}
-                        onChange={(e) => setIpdMrNo(e.target.value)}
+                        placeholder="Enter Force No"
+                        value={ipdForceNo}
+                        onChange={(e) => setIpdForceNo(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -343,7 +343,7 @@ const EntriesPage: React.FC = () => {
                     <TableRow>
                       <TableHead>Admission No</TableHead>
                       <TableHead>Patient</TableHead>
-                      <TableHead>MR No</TableHead>
+                      <TableHead>Force No</TableHead>
                       <TableHead>Ward</TableHead>
                       <TableHead>Bed</TableHead>
                       <TableHead>Doctor</TableHead>
@@ -356,7 +356,7 @@ const EntriesPage: React.FC = () => {
                       <TableRow key={entry.id}>
                         <TableCell className="font-bold text-primary">{entry.admissionNo}</TableCell>
                         <TableCell className="font-medium">{entry.patientName}</TableCell>
-                        <TableCell>{entry.mrNo}</TableCell>
+                        <TableCell>{entry.forceNo}</TableCell>
                         <TableCell>{entry.ward}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{entry.bed}</Badge>

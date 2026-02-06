@@ -21,8 +21,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Bell, LogOut, Key, ChevronDown } from 'lucide-react';
+import { LogOut, Key, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+import NotificationPanel from '@/components/notifications/NotificationPanel';
 
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -81,10 +82,7 @@ export const Header: React.FC = () => {
         {/* Actions */}
         <div className="flex items-center gap-4">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5 text-muted-foreground" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-          </Button>
+          <NotificationPanel />
 
           {/* User Menu */}
           <DropdownMenu>

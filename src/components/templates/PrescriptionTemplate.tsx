@@ -18,7 +18,6 @@ interface PrescriptionData {
   date: string;
   patient: {
     name: string;
-    mrNo: string;
     forceNo: string;
     age: number;
     gender: string;
@@ -97,7 +96,6 @@ const PrescriptionTemplate: React.FC<PrescriptionTemplateProps> = ({ data }) => 
               <h3 className="font-semibold text-sm text-muted-foreground mb-2">PATIENT INFORMATION</h3>
               <div className="space-y-1">
                 <p className="font-semibold text-lg">{data.patient.name}</p>
-                <p className="text-sm">MR No: <span className="font-medium">{data.patient.mrNo}</span></p>
                 <p className="text-sm">Force No: <span className="font-medium">{data.patient.forceNo}</span></p>
                 <p className="text-sm">{data.patient.gender}, {data.patient.age} years</p>
                 <p className="text-sm">Phone: {data.patient.phone}</p>

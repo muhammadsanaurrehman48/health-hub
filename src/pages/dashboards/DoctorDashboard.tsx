@@ -12,13 +12,14 @@ import {
   Users,
   Clock,
   CheckCircle,
+  Send,
 } from 'lucide-react';
 
 const mockActivities = [
   { id: '1', title: 'Consultation Completed', description: 'Patient: Ali Hassan - Flu symptoms', time: '10 min ago', status: 'completed' as const },
   { id: '2', title: 'Prescription Created', description: 'Rx #4521 - Antibiotics prescribed', time: '25 min ago', status: 'completed' as const },
   { id: '3', title: 'Lab Test Requested', description: 'Blood CBC for patient Fatima', time: '45 min ago', status: 'pending' as const },
-  { id: '4', title: 'Follow-up Scheduled', description: 'Patient Usman - Next week', time: '1 hour ago', status: 'active' as const },
+  { id: '4', title: 'Patient Referred', description: 'Referred to Cardiology - F-12345', time: '1 hour ago', status: 'active' as const },
 ];
 
 const DoctorDashboard: React.FC = () => {
@@ -60,7 +61,7 @@ const DoctorDashboard: React.FC = () => {
         {/* Quick Actions */}
         <div>
           <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <QuickAction
               title="View Appointments"
               description="Today's schedule"
@@ -91,6 +92,12 @@ const DoctorDashboard: React.FC = () => {
               icon={Scan}
               to="/doctor/radiology-requests"
             />
+            <QuickAction
+              title="Refer Patient"
+              description="To other units"
+              icon={Send}
+              to="/doctor/referrals"
+            />
           </div>
         </div>
 
@@ -100,17 +107,17 @@ const DoctorDashboard: React.FC = () => {
             <h3 className="font-semibold text-foreground mb-4">Upcoming Patients</h3>
             <div className="space-y-3">
               {[
-                { name: 'Muhammad Usman', mrNo: 'MR-0045', time: '10:30 AM', status: 'waiting' },
-                { name: 'Fatima Bibi', mrNo: 'MR-0089', time: '11:00 AM', status: 'scheduled' },
-                { name: 'Ahmed Khan', mrNo: 'MR-0123', time: '11:30 AM', status: 'scheduled' },
-                { name: 'Sara Ali', mrNo: 'MR-0156', time: '12:00 PM', status: 'scheduled' },
+                { name: 'Muhammad Usman', forceNo: 'F-12345', time: '10:30 AM', status: 'waiting' },
+                { name: 'Fatima Bibi', forceNo: 'F-12346', time: '11:00 AM', status: 'scheduled' },
+                { name: 'Ahmed Khan', forceNo: 'F-12347', time: '11:30 AM', status: 'scheduled' },
+                { name: 'Sara Ali', forceNo: 'F-12348', time: '12:00 PM', status: 'scheduled' },
               ].map((patient, i) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${patient.status === 'waiting' ? 'bg-warning' : 'bg-muted-foreground'}`} />
                     <div>
                       <p className="text-sm font-medium">{patient.name}</p>
-                      <p className="text-xs text-muted-foreground">{patient.mrNo}</p>
+                      <p className="text-xs text-muted-foreground">{patient.forceNo}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
