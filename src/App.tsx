@@ -4,11 +4,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 // Pages
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import QueueDisplay from "./pages/QueueDisplay";
 
 // Dashboards
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
@@ -42,6 +44,7 @@ import DoctorPrescriptions from "./pages/doctor/DoctorPrescriptions";
 import DoctorPatientHistory from "./pages/doctor/DoctorPatientHistory";
 import DoctorLabRequests from "./pages/doctor/DoctorLabRequests";
 import DoctorRadiologyRequests from "./pages/doctor/DoctorRadiologyRequests";
+import DoctorReferrals from "./pages/doctor/DoctorReferrals";
 
 // Pharmacy Pages
 import PharmacyPrescriptions from "./pages/pharmacy/PharmacyPrescriptions";
@@ -82,13 +85,15 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
+      <NotificationProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/queue-display" element={<QueueDisplay />} />
             
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />
@@ -106,14 +111,15 @@ const App = () => (
             <Route path="/receptionist/entries" element={<EntriesPage />} />
             <Route path="/receptionist/billing" element={<BillingPage />} />
             
-            {/* Doctor Routes */}
-            <Route path="/doctor" element={<DoctorDashboard />} />
-            <Route path="/doctor/appointments" element={<DoctorAppointments />} />
-            <Route path="/doctor/consultation/:mrNo" element={<ConsultationPage />} />
-            <Route path="/doctor/prescriptions" element={<DoctorPrescriptions />} />
-            <Route path="/doctor/history" element={<DoctorPatientHistory />} />
-            <Route path="/doctor/lab-requests" element={<DoctorLabRequests />} />
-            <Route path="/doctor/radiology-requests" element={<DoctorRadiologyRequests />} />
+              {/* Doctor Routes */}
+              <Route path="/doctor" element={<DoctorDashboard />} />
+              <Route path="/doctor/appointments" element={<DoctorAppointments />} />
+              <Route path="/doctor/consultation/:forceNo" element={<ConsultationPage />} />
+              <Route path="/doctor/prescriptions" element={<DoctorPrescriptions />} />
+              <Route path="/doctor/history" element={<DoctorPatientHistory />} />
+              <Route path="/doctor/lab-requests" element={<DoctorLabRequests />} />
+              <Route path="/doctor/radiology-requests" element={<DoctorRadiologyRequests />} />
+              <Route path="/doctor/referrals" element={<DoctorReferrals />} />
             
             {/* Radiologist Routes */}
             <Route path="/radiologist" element={<RadiologistDashboard />} />
@@ -156,11 +162,12 @@ const App = () => (
             <Route path="/nurse/medications" element={<MedicationRecords />} />
             <Route path="/nurse/notes" element={<CareNotes />} />
             
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+              {/* Catch-all */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </NotificationProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

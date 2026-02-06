@@ -35,7 +35,6 @@ const PatientRegistrationForm: React.FC = () => {
 
   // Patient Basic Info
   const [forceNo, setForceNo] = useState('');
-  const [mrNo, setMrNo] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState('');
@@ -61,11 +60,6 @@ const PatientRegistrationForm: React.FC = () => {
   const [allergies, setAllergies] = useState('');
   const [existingConditions, setExistingConditions] = useState('');
 
-  const generateMRNo = () => {
-    const timestamp = Date.now().toString().slice(-6);
-    setMrNo(`MR-${timestamp}`);
-  };
-
   const addFamilyMember = () => {
     setFamilyMembers([...familyMembers, { name: '', relation: '', age: '', gender: '' }]);
   };
@@ -88,7 +82,7 @@ const PatientRegistrationForm: React.FC = () => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     toast.success('Patient registered successfully!', {
-      description: `MR No: ${mrNo} - ${firstName} ${lastName}`,
+      description: `Force No: ${forceNo} - ${firstName} ${lastName}`,
     });
 
     setIsLoading(false);
@@ -128,21 +122,6 @@ const PatientRegistrationForm: React.FC = () => {
                 onChange={(e) => setForceNo(e.target.value)}
                 required
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="mrNo">MR No *</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="mrNo"
-                  placeholder="MR Number"
-                  value={mrNo}
-                  onChange={(e) => setMrNo(e.target.value)}
-                  required
-                />
-                <Button type="button" variant="outline" onClick={generateMRNo}>
-                  Generate
-                </Button>
-              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="cnic">CNIC</Label>

@@ -3,16 +3,16 @@
  import { Separator } from '@/components/ui/separator';
  import { Printer } from 'lucide-react';
  
- interface TokenData {
-   tokenNo: string;
-   patientName: string;
-   mrNo: string;
-   department: string;
-   doctor: string;
-   date: string;
-   time: string;
-   type: 'OPD' | 'IPD';
- }
+interface TokenData {
+  tokenNo: string;
+  patientName: string;
+  forceNo: string;
+  department: string;
+  doctor: string;
+  date: string;
+  time: string;
+  type: 'OPD' | 'IPD';
+}
  
  interface TokenTemplateProps {
    data: TokenData;
@@ -79,14 +79,14 @@
            
            <div class="divider"></div>
            
-           <div class="row">
-             <span>Patient:</span>
-             <span class="bold">${data.patientName}</span>
-           </div>
-           <div class="row">
-             <span>MR No:</span>
-             <span>${data.mrNo}</span>
-           </div>
+            <div class="row">
+              <span>Patient:</span>
+              <span class="bold">${data.patientName}</span>
+            </div>
+            <div class="row">
+              <span>Force No:</span>
+              <span>${data.forceNo}</span>
+            </div>
            <div class="row">
              <span>Department:</span>
              <span>${data.department}</span>
@@ -161,15 +161,15 @@
          <Separator className="my-3 border-dashed" />
  
          {/* Patient Details */}
-         <div className="space-y-1 text-xs">
-           <div className="flex justify-between">
-             <span>Patient:</span>
-             <span className="font-bold">{data.patientName}</span>
-           </div>
-           <div className="flex justify-between">
-             <span>MR No:</span>
-             <span>{data.mrNo}</span>
-           </div>
+          <div className="space-y-1 text-xs">
+            <div className="flex justify-between">
+              <span>Patient:</span>
+              <span className="font-bold">{data.patientName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Force No:</span>
+              <span>{data.forceNo}</span>
+            </div>
            <div className="flex justify-between">
              <span>Department:</span>
              <span>{data.department}</span>

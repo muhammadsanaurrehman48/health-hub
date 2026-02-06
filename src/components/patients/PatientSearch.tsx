@@ -26,7 +26,6 @@ import {
 const mockPatients = [
   {
     id: '1',
-    mrNo: 'MR-001234',
     forceNo: 'F-12345',
     name: 'Muhammad Ali',
     gender: 'Male',
@@ -38,7 +37,6 @@ const mockPatients = [
   },
   {
     id: '2',
-    mrNo: 'MR-001235',
     forceNo: 'F-12346',
     name: 'Fatima Bibi',
     gender: 'Female',
@@ -50,7 +48,6 @@ const mockPatients = [
   },
   {
     id: '3',
-    mrNo: 'MR-001236',
     forceNo: 'F-12347',
     name: 'Ahmed Khan',
     gender: 'Male',
@@ -62,7 +59,6 @@ const mockPatients = [
   },
   {
     id: '4',
-    mrNo: 'MR-001237',
     forceNo: 'F-12348',
     name: 'Sara Begum',
     gender: 'Female',
@@ -77,7 +73,7 @@ const mockPatients = [
 const PatientSearch: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState<'all' | 'forceNo' | 'mrNo' | 'name'>('all');
+  const [searchType, setSearchType] = useState<'all' | 'forceNo' | 'name'>('all');
 
   const filteredPatients = mockPatients.filter((patient) => {
     const query = searchQuery.toLowerCase();
@@ -86,14 +82,11 @@ const PatientSearch: React.FC = () => {
     switch (searchType) {
       case 'forceNo':
         return patient.forceNo.toLowerCase().includes(query);
-      case 'mrNo':
-        return patient.mrNo.toLowerCase().includes(query);
       case 'name':
         return patient.name.toLowerCase().includes(query);
       default:
         return (
           patient.forceNo.toLowerCase().includes(query) ||
-          patient.mrNo.toLowerCase().includes(query) ||
           patient.name.toLowerCase().includes(query) ||
           patient.phone.includes(query)
         );
@@ -105,7 +98,7 @@ const PatientSearch: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Search Patients</h2>
-          <p className="text-muted-foreground">Find patients by Force No, MR No, or Name</p>
+          <p className="text-muted-foreground">Find patients by Force No or Name</p>
         </div>
         <Button onClick={() => navigate('/receptionist/patients/register')}>
           <User className="w-4 h-4 mr-2" />
@@ -113,28 +106,27 @@ const PatientSearch: React.FC = () => {
         </Button>
       </div>
 
-      {/* Search Section */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search by Force No, MR No, Name, or Phone..."
+                placeholder="Search by Force No, Name, or Phone..."
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <div className="flex gap-2">
-              {(['all', 'forceNo', 'mrNo', 'name'] as const).map((type) => (
+              {(['all', 'forceNo', 'name'] as const).map((type) => (
                 <Button
                   key={type}
                   variant={searchType === type ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSearchType(type)}
                 >
-                  {type === 'all' ? 'All' : type === 'forceNo' ? 'Force No' : type === 'mrNo' ? 'MR No' : 'Name'}
+                  {type === 'all' ? 'All' : type === 'forceNo' ? 'Force No' : 'Name'}
                 </Button>
               ))}
             </div>
@@ -154,7 +146,6 @@ const PatientSearch: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>MR No</TableHead>
                   <TableHead>Force No</TableHead>
                   <TableHead>Patient Name</TableHead>
                   <TableHead>Gender / Age</TableHead>
@@ -168,15 +159,14 @@ const PatientSearch: React.FC = () => {
               <TableBody>
                 {filteredPatients.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No patients found matching your search
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredPatients.map((patient) => (
                     <TableRow key={patient.id}>
-                      <TableCell className="font-medium">{patient.mrNo}</TableCell>
-                      <TableCell>{patient.forceNo}</TableCell>
+                      <TableCell className="font-medium">{patient.forceNo}</TableCell>
                       <TableCell className="font-medium">{patient.name}</TableCell>
                       <TableCell>{patient.gender} / {patient.age}y</TableCell>
                       <TableCell>{patient.phone}</TableCell>

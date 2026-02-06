@@ -25,11 +25,11 @@ import {
 } from 'lucide-react';
 
 const mockAppointments = [
-  { id: '1', patientName: 'Muhammad Ali', mrNo: 'MR-001234', forceNo: 'F-12345', age: 45, gender: 'Male', time: '10:00 AM', complaint: 'Chest pain', status: 'waiting' },
-  { id: '2', patientName: 'Fatima Begum', mrNo: 'MR-001235', forceNo: 'F-12346', age: 32, gender: 'Female', time: '10:30 AM', complaint: 'Fever', status: 'in-progress' },
-  { id: '3', patientName: 'Ahmed Khan', mrNo: 'MR-001236', forceNo: 'F-12347', age: 28, gender: 'Male', time: '11:00 AM', complaint: 'Back pain', status: 'completed' },
-  { id: '4', patientName: 'Sara Bibi', mrNo: 'MR-001237', forceNo: 'F-12348', age: 55, gender: 'Female', time: '11:30 AM', complaint: 'Diabetes checkup', status: 'waiting' },
-  { id: '5', patientName: 'Usman Ali', mrNo: 'MR-001238', forceNo: 'F-12349', age: 40, gender: 'Male', time: '12:00 PM', complaint: 'Hypertension', status: 'waiting' },
+  { id: '1', patientName: 'Muhammad Ali', forceNo: 'F-12345', age: 45, gender: 'Male', time: '10:00 AM', complaint: 'Chest pain', status: 'waiting' },
+  { id: '2', patientName: 'Fatima Begum', forceNo: 'F-12346', age: 32, gender: 'Female', time: '10:30 AM', complaint: 'Fever', status: 'in-progress' },
+  { id: '3', patientName: 'Ahmed Khan', forceNo: 'F-12347', age: 28, gender: 'Male', time: '11:00 AM', complaint: 'Back pain', status: 'completed' },
+  { id: '4', patientName: 'Sara Bibi', forceNo: 'F-12348', age: 55, gender: 'Female', time: '11:30 AM', complaint: 'Diabetes checkup', status: 'waiting' },
+  { id: '5', patientName: 'Usman Ali', forceNo: 'F-12349', age: 40, gender: 'Male', time: '12:00 PM', complaint: 'Hypertension', status: 'waiting' },
 ];
 
 const DoctorAppointments: React.FC = () => {
@@ -47,11 +47,11 @@ const DoctorAppointments: React.FC = () => {
 
   const filteredAppointments = mockAppointments.filter((apt) =>
     apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    apt.mrNo.toLowerCase().includes(searchQuery.toLowerCase())
+    apt.forceNo.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const startConsultation = (appointment: typeof mockAppointments[0]) => {
-    navigate(`/doctor/consultation/${appointment.mrNo}`, { state: { patient: appointment } });
+    navigate(`/doctor/consultation/${appointment.forceNo}`, { state: { patient: appointment } });
   };
 
   return (
@@ -119,7 +119,7 @@ const DoctorAppointments: React.FC = () => {
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name or MR No"
+                  placeholder="Search by name or Force No"
                   className="pl-10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -133,7 +133,7 @@ const DoctorAppointments: React.FC = () => {
                 <TableRow>
                   <TableHead>Time</TableHead>
                   <TableHead>Patient</TableHead>
-                  <TableHead>MR No / Force No</TableHead>
+                  <TableHead>Force No</TableHead>
                   <TableHead>Age / Gender</TableHead>
                   <TableHead>Complaint</TableHead>
                   <TableHead>Status</TableHead>
@@ -158,10 +158,7 @@ const DoctorAppointments: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{apt.mrNo}</p>
-                        <p className="text-xs text-muted-foreground">{apt.forceNo}</p>
-                      </div>
+                      <p className="font-medium">{apt.forceNo}</p>
                     </TableCell>
                     <TableCell>{apt.age}y / {apt.gender}</TableCell>
                     <TableCell>{apt.complaint}</TableCell>
