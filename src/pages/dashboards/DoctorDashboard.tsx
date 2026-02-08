@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import { useAuth } from '@/contexts/AuthContext';
+import api from '@/utils/api';
 import {
   Calendar,
   FileText,
@@ -13,16 +15,51 @@ import {
   Clock,
   CheckCircle,
   Send,
+  Loader2,
 } from 'lucide-react';
 
-const mockActivities = [
-  { id: '1', title: 'Consultation Completed', description: 'Patient: Ali Hassan - Flu symptoms', time: '10 min ago', status: 'completed' as const },
-  { id: '2', title: 'Prescription Created', description: 'Rx #4521 - Antibiotics prescribed', time: '25 min ago', status: 'completed' as const },
-  { id: '3', title: 'Lab Test Requested', description: 'Blood CBC for patient Fatima', time: '45 min ago', status: 'pending' as const },
-  { id: '4', title: 'Patient Referred', description: 'Referred to Cardiology - F-12345', time: '1 hour ago', status: 'active' as const },
-];
-
 const DoctorDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [appointmentsRes, activitiesRes] = await Promise.all([
+          api.getDoctorAppointments(user?.id || ''),
+          api.getActivities()
+        ]);
+        if (appointmentsRes.success) {
+          setAppointments(appointmentsRes.data);
+        }
+        if (activitiesRes.success) {
+          setActivities(activitiesRes.data.slice(0, 4));
+        }
+      } catch (error) {
+        console.error('Error fetching doctor data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [user?.id]);
+
+  const completedAppointments = appointments.filter((a: any) => a.status === 'completed').length;
+  const pendingAppointments = appointments.filter((a: any) => a.status === 'scheduled').length;
+  const upcomingPatients = appointments.filter((a: any) => a.status === 'scheduled').slice(0, 4);
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="doctor">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout requiredRole="doctor">
       <div className="space-y-6">
@@ -30,28 +67,28 @@ const DoctorDashboard: React.FC = () => {
         <div className="dashboard-grid">
           <StatCard
             title="Today's Appointments"
-            value={15}
-            subtitle="8 completed, 7 pending"
+            value={appointments.length}
+            subtitle={`${completedAppointments} completed, ${pendingAppointments} pending`}
             icon={Calendar}
             variant="primary"
           />
           <StatCard
             title="Patients Seen"
-            value={8}
-            subtitle="Out of 15 scheduled"
+            value={completedAppointments}
+            subtitle={`Out of ${appointments.length} scheduled`}
             icon={Users}
             variant="success"
           />
           <StatCard
             title="Pending Reports"
-            value={5}
+            value={pendingAppointments}
             subtitle="Lab & Radiology"
             icon={FileText}
             variant="warning"
           />
           <StatCard
             title="Prescriptions Today"
-            value={12}
+            value={completedAppointments}
             subtitle="Written today"
             icon={ClipboardList}
             variant="primary"
@@ -106,18 +143,13 @@ const DoctorDashboard: React.FC = () => {
           <div className="bg-card rounded-xl border border-border p-6">
             <h3 className="font-semibold text-foreground mb-4">Upcoming Patients</h3>
             <div className="space-y-3">
-              {[
-                { name: 'Muhammad Usman', forceNo: 'F-12345', time: '10:30 AM', status: 'waiting' },
-                { name: 'Fatima Bibi', forceNo: 'F-12346', time: '11:00 AM', status: 'scheduled' },
-                { name: 'Ahmed Khan', forceNo: 'F-12347', time: '11:30 AM', status: 'scheduled' },
-                { name: 'Sara Ali', forceNo: 'F-12348', time: '12:00 PM', status: 'scheduled' },
-              ].map((patient, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              {upcomingPatients.length > 0 ? upcomingPatients.map((patient: any, i: number) => (
+                <div key={patient.id || i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${patient.status === 'waiting' ? 'bg-warning' : 'bg-muted-foreground'}`} />
                     <div>
-                      <p className="text-sm font-medium">{patient.name}</p>
-                      <p className="text-xs text-muted-foreground">{patient.forceNo}</p>
+                      <p className="text-sm font-medium">{patient.patientName}</p>
+                      <p className="text-xs text-muted-foreground">{patient.forceNo || patient.mrNo}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -125,10 +157,12 @@ const DoctorDashboard: React.FC = () => {
                     <span className="text-sm">{patient.time}</span>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No upcoming patients</p>
+              )}
             </div>
           </div>
-          <RecentActivity title="Recent Activity" activities={mockActivities} />
+          <RecentActivity title="Recent Activity" activities={activities} />
         </div>
       </div>
     </DashboardLayout>

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import api from '@/utils/api';
 import {
   Users,
   Building2,
@@ -12,16 +13,46 @@ import {
   FileText,
   Shield,
   Activity,
+  Loader2,
 } from 'lucide-react';
 
-const mockActivities = [
-  { id: '1', title: 'New user registered', description: 'Dr. Ahmed Khan joined as Doctor', time: '5 min ago', status: 'completed' as const },
-  { id: '2', title: 'System backup completed', description: 'Daily backup successful', time: '1 hour ago', status: 'completed' as const },
-  { id: '3', title: 'New department added', description: 'Cardiology department created', time: '2 hours ago', status: 'completed' as const },
-  { id: '4', title: 'Role permissions updated', description: 'Nurse role updated', time: '3 hours ago', status: 'pending' as const },
-];
-
 const AdminDashboard: React.FC = () => {
+  const [stats, setStats] = useState({ totalUsers: 0, departments: 0, todayPatients: 0, systemHealth: '0%' });
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsRes, activitiesRes] = await Promise.all([
+          api.getAdminStats(),
+          api.getActivities()
+        ]);
+        if (statsRes.success) {
+          setStats(statsRes.data);
+        }
+        if (activitiesRes.success) {
+          setActivities(activitiesRes.data);
+        }
+      } catch (error) {
+        console.error('Error fetching admin data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="admin">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout requiredRole="admin">
       <div className="space-y-6">
@@ -29,7 +60,7 @@ const AdminDashboard: React.FC = () => {
         <div className="dashboard-grid">
           <StatCard
             title="Total Users"
-            value={156}
+            value={stats.totalUsers}
             subtitle="Active staff members"
             icon={Users}
             variant="primary"
@@ -37,14 +68,14 @@ const AdminDashboard: React.FC = () => {
           />
           <StatCard
             title="Departments"
-            value={12}
+            value={stats.departments}
             subtitle="Active departments"
             icon={Building2}
             variant="success"
           />
           <StatCard
             title="Today's Patients"
-            value={89}
+            value={stats.todayPatients}
             subtitle="OPD + IPD combined"
             icon={Activity}
             variant="warning"
@@ -52,7 +83,7 @@ const AdminDashboard: React.FC = () => {
           />
           <StatCard
             title="System Health"
-            value="98%"
+            value={stats.systemHealth}
             subtitle="All systems operational"
             icon={Shield}
             variant="success"
@@ -98,7 +129,7 @@ const AdminDashboard: React.FC = () => {
 
         {/* Recent Activity */}
         <div className="grid lg:grid-cols-2 gap-6">
-          <RecentActivity title="Recent System Activity" activities={mockActivities} />
+          <RecentActivity title="Recent System Activity" activities={activities} />
           <div className="bg-card rounded-xl border border-border p-6">
             <h3 className="font-semibold text-foreground mb-4">System Overview</h3>
             <div className="space-y-4">

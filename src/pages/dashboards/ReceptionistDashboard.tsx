@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import api from '@/utils/api';
 import {
   UserPlus,
   Users,
@@ -11,16 +12,65 @@ import {
   Receipt,
   Search,
   Ticket,
+  Loader2,
 } from 'lucide-react';
 
-const mockActivities = [
-  { id: '1', title: 'Patient Registered', description: 'Muhammad Ali - Force No: 12345', time: '2 min ago', status: 'completed' as const },
-  { id: '2', title: 'Appointment Scheduled', description: 'Dr. Khan - 10:30 AM', time: '15 min ago', status: 'active' as const },
-  { id: '3', title: 'Token Generated', description: 'OPD Token #45 - Cardiology', time: '30 min ago', status: 'pending' as const },
-  { id: '4', title: 'Bill Generated', description: 'Invoice #1234 - Rs. 5,500', time: '1 hour ago', status: 'completed' as const },
-];
-
 const ReceptionistDashboard: React.FC = () => {
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [appointmentsRes, patientsRes] = await Promise.all([
+          api.getAppointments(),
+          api.getPatients()
+        ]);
+        if (appointmentsRes.success) {
+          setAppointments(appointmentsRes.data);
+          // Create activities from recent appointments
+          const recentActivities = appointmentsRes.data.slice(0, 4).map((apt: any, idx: number) => ({
+            id: String(idx + 1),
+            title: apt.status === 'scheduled' ? 'Appointment Scheduled' : 'Patient Registered',
+            description: `${apt.patientName || 'Patient'} - ${apt.doctor || 'Doctor'}`,
+            time: apt.date || 'Recently',
+            status: apt.status === 'completed' ? 'completed' : 'active'
+          }));
+          setActivities(recentActivities);
+        }
+        if (patientsRes.success) {
+          setPatients(patientsRes.data);
+        }
+      } catch (error) {
+        console.error('Error fetching receptionist data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const todayRegistrations = patients.filter((p: any) => {
+    const today = new Date().toISOString().split('T')[0];
+    return p.createdAt?.startsWith(today);
+  }).length;
+
+  const pendingAppointments = appointments.filter((a: any) => a.status === 'scheduled').length;
+  const activeTokens = appointments.filter((a: any) => a.status === 'in-progress').length;
+  const billsGenerated = appointments.filter((a: any) => a.status === 'completed').length;
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="receptionist">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout requiredRole="receptionist">
       <div className="space-y-6">
@@ -28,7 +78,7 @@ const ReceptionistDashboard: React.FC = () => {
         <div className="dashboard-grid">
           <StatCard
             title="Today's Registrations"
-            value={24}
+            value={todayRegistrations}
             subtitle="New patients today"
             icon={UserPlus}
             variant="primary"
@@ -36,21 +86,21 @@ const ReceptionistDashboard: React.FC = () => {
           />
           <StatCard
             title="Pending Appointments"
-            value={18}
+            value={pendingAppointments}
             subtitle="Waiting to be assigned"
             icon={Calendar}
             variant="warning"
           />
           <StatCard
             title="Active Tokens"
-            value={12}
+            value={activeTokens}
             subtitle="Currently in queue"
             icon={Ticket}
             variant="success"
           />
           <StatCard
             title="Bills Generated"
-            value={45}
+            value={billsGenerated}
             subtitle="Today's invoices"
             icon={Receipt}
             variant="primary"
@@ -96,7 +146,7 @@ const ReceptionistDashboard: React.FC = () => {
 
         {/* Recent Activity & Upcoming Appointments */}
         <div className="grid lg:grid-cols-2 gap-6">
-          <RecentActivity title="Recent Activity" activities={mockActivities} />
+          <RecentActivity title="Recent Activity" activities={activities} />
           <div className="bg-card rounded-xl border border-border p-6">
             <h3 className="font-semibold text-foreground mb-4">Today's Schedule</h3>
             <div className="space-y-3">

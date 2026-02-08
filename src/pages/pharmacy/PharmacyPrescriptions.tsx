@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import api from '@/utils/api';
 import {
   Table,
   TableBody,
@@ -28,19 +29,31 @@ import {
   Printer,
   Package,
   Eye,
+  Loader2,
 } from 'lucide-react';
-
-const mockPrescriptions = [
-  { id: '1', rxNo: 'RX-456789', patientName: 'Muhammad Ali', mrNo: 'MR-001234', doctor: 'Dr. Ahmad Khan', medicines: 3, date: '2025-02-01 10:30 AM', status: 'pending' },
-  { id: '2', rxNo: 'RX-456788', patientName: 'Fatima Begum', mrNo: 'MR-001235', doctor: 'Dr. Sara Ali', medicines: 4, date: '2025-02-01 10:15 AM', status: 'dispensed' },
-  { id: '3', rxNo: 'RX-456787', patientName: 'Ahmed Khan', mrNo: 'MR-001236', doctor: 'Dr. Usman Malik', medicines: 2, date: '2025-02-01 09:45 AM', status: 'dispensed' },
-  { id: '4', rxNo: 'RX-456786', patientName: 'Sara Bibi', mrNo: 'MR-001237', doctor: 'Dr. Ahmad Khan', medicines: 5, date: '2025-02-01 09:30 AM', status: 'pending' },
-];
 
 const PharmacyPrescriptions: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isViewSheetOpen, setIsViewSheetOpen] = useState(false);
   const [selectedRx, setSelectedRx] = useState<any>(null);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPrescriptions = async () => {
+      try {
+        const response = await api.getPharmacyPrescriptions();
+        if (response.success) {
+          setPrescriptions(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching prescriptions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrescriptions();
+  }, []);
 
   const samplePrescriptionData = {
     prescriptionNo: 'RX-456789',
@@ -92,16 +105,26 @@ const PharmacyPrescriptions: React.FC = () => {
     toast.success(`Prescription ${rxNo} dispensed successfully!`);
   };
 
-  const handleViewPrescription = (rx: typeof mockPrescriptions[0]) => {
+  const handleViewPrescription = (rx: typeof prescriptions[0]) => {
     setSelectedRx(rx);
     setIsViewSheetOpen(true);
   };
 
-  const filteredPrescriptions = mockPrescriptions.filter((rx) =>
-    rx.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    rx.mrNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    rx.rxNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredPrescriptions = prescriptions.filter((rx) =>
+    rx.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    rx.mrNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    rx.rxNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="pharmacy">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="pharmacy">
@@ -122,7 +145,7 @@ const PharmacyPrescriptions: React.FC = () => {
                   <Clock className="w-5 h-5 text-warning" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockPrescriptions.filter(r => r.status === 'pending').length}</p>
+                  <p className="text-2xl font-bold">{prescriptions.filter(r => r.status === 'pending').length}</p>
                   <p className="text-sm text-muted-foreground">Pending</p>
                 </div>
               </div>
@@ -135,7 +158,7 @@ const PharmacyPrescriptions: React.FC = () => {
                   <CheckCircle className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockPrescriptions.filter(r => r.status === 'dispensed').length}</p>
+                  <p className="text-2xl font-bold">{prescriptions.filter(r => r.status === 'dispensed').length}</p>
                   <p className="text-sm text-muted-foreground">Dispensed Today</p>
                 </div>
               </div>
@@ -148,7 +171,7 @@ const PharmacyPrescriptions: React.FC = () => {
                   <Pill className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockPrescriptions.reduce((sum, r) => sum + r.medicines, 0)}</p>
+                  <p className="text-2xl font-bold">{prescriptions.reduce((sum, r) => sum + (r.medicines || 0), 0)}</p>
                   <p className="text-sm text-muted-foreground">Total Medicines</p>
                 </div>
               </div>

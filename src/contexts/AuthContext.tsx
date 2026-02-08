@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { User, UserRole } from '@/types/roles';
+import api from '@/utils/api';
 
 interface AuthContextType {
   user: User | null;
@@ -18,32 +19,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const login = useCallback(async (email: string, password: string, role: UserRole) => {
-    // Simulated login - will be replaced with actual API call
-    const mockUser: User = {
-      id: crypto.randomUUID(),
-      name: email.split('@')[0],
-      email,
-      role,
-    };
-    setUser(mockUser);
-    localStorage.setItem('hms_user', JSON.stringify(mockUser));
+    try {
+      const response = await api.login(email, password, role);
+      if (response.success) {
+        const userData = response.data.user;
+        setUser(userData);
+        localStorage.setItem('hms_user', JSON.stringify(userData));
+        localStorage.setItem('hms_token', response.data.token);
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
+    } catch (err) {
+      throw err;
+    }
   }, []);
 
   const signup = useCallback(async (name: string, email: string, password: string, role: UserRole) => {
-    // Simulated signup - will be replaced with actual API call
-    const mockUser: User = {
-      id: crypto.randomUUID(),
-      name,
-      email,
-      role,
-    };
-    setUser(mockUser);
-    localStorage.setItem('hms_user', JSON.stringify(mockUser));
+    try {
+      const response = await api.signup(name, email, password, role);
+      if (response.success) {
+        const userData = response.data.user;
+        setUser(userData);
+        localStorage.setItem('hms_user', JSON.stringify(userData));
+        localStorage.setItem('hms_token', response.data.token);
+      } else {
+        throw new Error(response.message || 'Signup failed');
+      }
+    } catch (err) {
+      throw err;
+    }
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('hms_user');
+    localStorage.removeItem('hms_token');
   }, []);
 
   return (

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import api from '@/utils/api';
 import {
   UserPlus,
   Save,
@@ -78,15 +79,51 @@ const PatientRegistrationForm: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      if (!forceNo || !firstName || !lastName || !phone || !address || !city) {
+        toast.error('Please fill in all required fields');
+        setIsLoading(false);
+        return;
+      }
 
-    toast.success('Patient registered successfully!', {
-      description: `Force No: ${forceNo} - ${firstName} ${lastName}`,
-    });
+      const patientData = {
+        forceNo,
+        firstName,
+        lastName,
+        gender,
+        dateOfBirth,
+        bloodGroup,
+        cnic,
+        phone,
+        email,
+        address,
+        city,
+        emergencyContact: {
+          name: emergencyName,
+          phone: emergencyPhone,
+          relation: emergencyRelation,
+        },
+        allergies,
+        existingConditions,
+        familyMembers,
+      };
 
-    setIsLoading(false);
-    navigate('/receptionist/patients/search');
+      const response = await api.createPatient(patientData);
+
+      if (response.success) {
+        toast.success('Patient registered successfully!', {
+          description: `Force No: ${forceNo} - ${firstName} ${lastName}`,
+        });
+        navigate('/receptionist/patients/search');
+      } else {
+        toast.error(response.message || 'Failed to register patient');
+      }
+    } catch (err) {
+      console.error('Error registering patient:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to register patient');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import api from '@/utils/api';
 import {
   Dialog,
   DialogContent,
@@ -27,29 +28,37 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Search, Edit, Trash2, MoreHorizontal, Shield, UserCheck, UserX } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, MoreHorizontal, Shield, UserCheck, UserX, Loader2 } from 'lucide-react';
 import { rolesList } from '@/types/roles';
 import { toast } from 'sonner';
-
-const mockUsers = [
-  { id: '1', name: 'Dr. Ahmed Khan', email: 'ahmed.khan@hospital.com', role: 'doctor', department: 'Cardiology', status: 'active', createdAt: '2024-01-15' },
-  { id: '2', name: 'Sarah Ali', email: 'sarah.ali@hospital.com', role: 'nurse', department: 'General Ward', status: 'active', createdAt: '2024-02-10' },
-  { id: '3', name: 'Muhammad Hassan', email: 'm.hassan@hospital.com', role: 'receptionist', department: 'Front Desk', status: 'active', createdAt: '2024-01-20' },
-  { id: '4', name: 'Dr. Fatima Bibi', email: 'fatima.b@hospital.com', role: 'radiologist', department: 'Radiology', status: 'active', createdAt: '2024-03-01' },
-  { id: '5', name: 'Ali Raza', email: 'ali.raza@hospital.com', role: 'pharmacy', department: 'Pharmacy', status: 'inactive', createdAt: '2024-02-28' },
-  { id: '6', name: 'Usman Khan', email: 'usman.k@hospital.com', role: 'laboratory', department: 'Laboratory', status: 'active', createdAt: '2024-01-25' },
-  { id: '7', name: 'Ayesha Siddiqui', email: 'ayesha.s@hospital.com', role: 'billing', department: 'Accounts', status: 'active', createdAt: '2024-02-15' },
-];
 
 const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', role: '', department: '', password: '' });
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredUsers = mockUsers.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await api.request('/users');
+        if (response.success) {
+          setUsers(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -72,6 +81,16 @@ const UserManagement: React.FC = () => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     toast.success(`User ${userName} is now ${newStatus}`);
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="admin">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="admin">

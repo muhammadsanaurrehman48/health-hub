@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import api from '@/utils/api';
 import {
   Pill,
   ClipboardList,
@@ -12,16 +13,56 @@ import {
   AlertTriangle,
   CheckCircle,
   Package,
+  Loader2,
 } from 'lucide-react';
 
-const mockActivities = [
-  { id: '1', title: 'Prescription Dispensed', description: 'Rx #4521 - 5 medicines issued', time: '5 min ago', status: 'completed' as const },
-  { id: '2', title: 'New Prescription', description: 'Dr. Khan - Patient Ali Hassan', time: '15 min ago', status: 'pending' as const },
-  { id: '3', title: 'Low Stock Alert', description: 'Paracetamol 500mg - Only 20 left', time: '30 min ago', status: 'cancelled' as const },
-  { id: '4', title: 'Stock Updated', description: 'Added 500 units of Amoxicillin', time: '1 hour ago', status: 'completed' as const },
-];
-
 const PharmacyDashboard: React.FC = () => {
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [prescriptionsRes, lowStockRes] = await Promise.all([
+          api.getPharmacyPrescriptions(),
+          api.getLowStockItems()
+        ]);
+        if (prescriptionsRes.success) {
+          setPrescriptions(prescriptionsRes.data);
+        }
+        if (lowStockRes.success) {
+          setLowStockItems(lowStockRes.data);
+        }
+      } catch (error) {
+        console.error('Error fetching pharmacy data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const pendingPrescriptions = prescriptions.filter(p => p.status === 'pending');
+  const dispensedToday = prescriptions.filter(p => p.status === 'dispensed').length;
+  const activities = prescriptions.slice(0, 4).map((rx, idx) => ({
+    id: String(idx + 1),
+    title: rx.status === 'dispensed' ? 'Prescription Dispensed' : 'New Prescription',
+    description: `${rx.rxNo || 'Rx'} - ${rx.medicines || 0} medicines`,
+    time: rx.date || 'Recently',
+    status: rx.status === 'dispensed' ? 'completed' : 'pending'
+  }));
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="pharmacy">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout requiredRole="pharmacy">
       <div className="space-y-6">
@@ -29,28 +70,28 @@ const PharmacyDashboard: React.FC = () => {
         <div className="dashboard-grid">
           <StatCard
             title="Pending Prescriptions"
-            value={7}
+            value={pendingPrescriptions.length}
             subtitle="Awaiting dispensing"
             icon={ClipboardList}
             variant="warning"
           />
           <StatCard
             title="Dispensed Today"
-            value={34}
+            value={dispensedToday}
             subtitle="Prescriptions fulfilled"
             icon={CheckCircle}
             variant="success"
           />
           <StatCard
             title="Low Stock Items"
-            value={5}
+            value={lowStockItems.length}
             subtitle="Need restocking"
             icon={AlertTriangle}
             variant="destructive"
           />
           <StatCard
             title="Total Medicines"
-            value={1250}
+            value={prescriptions.reduce((sum, p) => sum + (p.medicines || 0), 0)}
             subtitle="In inventory"
             icon={Pill}
             variant="primary"
@@ -93,48 +134,43 @@ const PharmacyDashboard: React.FC = () => {
           <div className="bg-card rounded-xl border border-border p-6">
             <h3 className="font-semibold text-foreground mb-4">Pending Prescriptions</h3>
             <div className="space-y-3">
-              {[
-                { rxNo: 'Rx-4525', patient: 'Ali Hassan', doctor: 'Dr. Khan', medicines: 3, time: '5 min ago' },
-                { rxNo: 'Rx-4526', patient: 'Fatima Bibi', doctor: 'Dr. Ahmed', medicines: 5, time: '10 min ago' },
-                { rxNo: 'Rx-4527', patient: 'Usman Ali', doctor: 'Dr. Sara', medicines: 2, time: '15 min ago' },
-                { rxNo: 'Rx-4528', patient: 'Sara Khan', doctor: 'Dr. Ali', medicines: 4, time: '20 min ago' },
-              ].map((rx, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              {pendingPrescriptions.slice(0, 4).map((rx: any, i: number) => (
+                <div key={rx.id || i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                   <div>
-                    <p className="text-sm font-medium">{rx.patient}</p>
-                    <p className="text-xs text-muted-foreground">{rx.rxNo} • {rx.medicines} medicines</p>
+                    <p className="text-sm font-medium">{rx.patientName}</p>
+                    <p className="text-xs text-muted-foreground">{rx.rxNo} • {rx.medicines || 0} medicines</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">{rx.doctor}</p>
-                    <p className="text-xs text-muted-foreground">{rx.time}</p>
+                    <p className="text-xs text-muted-foreground">{rx.date}</p>
                   </div>
                 </div>
               ))}
+              {pendingPrescriptions.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">No pending prescriptions</p>
+              )}
             </div>
           </div>
           <div className="bg-card rounded-xl border border-border p-6">
             <h3 className="font-semibold text-foreground mb-4">Low Stock Alerts</h3>
             <div className="space-y-3">
-              {[
-                { name: 'Paracetamol 500mg', stock: 20, min: 100 },
-                { name: 'Amoxicillin 250mg', stock: 35, min: 50 },
-                { name: 'Omeprazole 20mg', stock: 15, min: 50 },
-                { name: 'Metformin 500mg', stock: 25, min: 100 },
-                { name: 'Aspirin 75mg', stock: 40, min: 100 },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-destructive-muted/50 rounded-lg">
+              {lowStockItems.slice(0, 5).map((item: any, i: number) => (
+                <div key={item.id || i} className="flex items-center justify-between p-3 bg-destructive-muted/50 rounded-lg">
                   <div>
                     <p className="text-sm font-medium">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">Min stock: {item.min}</p>
+                    <p className="text-xs text-muted-foreground">Min stock: {item.minStock || item.min}</p>
                   </div>
                   <span className="badge-cancelled">{item.stock} left</span>
                 </div>
               ))}
+              {lowStockItems.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">No low stock items</p>
+              )}
             </div>
           </div>
         </div>
 
-        <RecentActivity title="Recent Activity" activities={mockActivities} />
+        <RecentActivity title="Recent Activity" activities={activities} />
       </div>
     </DashboardLayout>
   );

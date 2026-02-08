@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import api from '@/utils/api';
 import {
   FlaskConical,
   ClipboardList,
@@ -12,16 +13,51 @@ import {
   CheckCircle,
   Clock,
   Activity,
+  Loader2,
 } from 'lucide-react';
 
-const mockActivities = [
-  { id: '1', title: 'Blood Test Completed', description: 'Patient: Ahmad Ali - CBC Report', time: '10 min ago', status: 'completed' as const },
-  { id: '2', title: 'Sample Collected', description: 'Patient Fatima - Urine test', time: '25 min ago', status: 'active' as const },
-  { id: '3', title: 'Results Entered', description: 'Lipid Profile - Patient #123', time: '45 min ago', status: 'completed' as const },
-  { id: '4', title: 'Test Requested', description: 'Dr. Khan - LFT for patient Usman', time: '1 hour ago', status: 'pending' as const },
-];
-
 const LaboratoryDashboard: React.FC = () => {
+  const [labRequests, setLabRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await api.getLabRequests();
+        if (response.success) {
+          setLabRequests(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching lab requests:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const pendingTests = labRequests.filter(r => r.status === 'pending').length;
+  const samplesCollected = labRequests.filter(r => r.status === 'sample-collected' || r.status === 'in-progress').length;
+  const completedToday = labRequests.filter(r => r.status === 'completed').length;
+  const pendingLabTests = labRequests.filter(r => r.status === 'pending' || r.status === 'sample-collected').slice(0, 4);
+  const activities = labRequests.slice(0, 4).map((req, idx) => ({
+    id: String(idx + 1),
+    title: req.status === 'completed' ? 'Test Completed' : 'Test Requested',
+    description: `${req.patientName || 'Patient'} - ${req.test || 'Test'}`,
+    time: req.requestDate || 'Recently',
+    status: req.status === 'completed' ? 'completed' : req.status === 'pending' ? 'pending' : 'active'
+  }));
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="laboratory">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout requiredRole="laboratory">
       <div className="space-y-6">
@@ -29,28 +65,28 @@ const LaboratoryDashboard: React.FC = () => {
         <div className="dashboard-grid">
           <StatCard
             title="Pending Tests"
-            value={12}
+            value={pendingTests}
             subtitle="Awaiting sample/results"
             icon={ClipboardList}
             variant="warning"
           />
           <StatCard
             title="Samples Collected"
-            value={8}
+            value={samplesCollected}
             subtitle="Processing today"
             icon={Beaker}
             variant="primary"
           />
           <StatCard
             title="Completed Today"
-            value={25}
+            value={completedToday}
             subtitle="Reports generated"
             icon={CheckCircle}
             variant="success"
           />
           <StatCard
             title="Total This Month"
-            value={456}
+            value={labRequests.length}
             subtitle="All lab tests"
             icon={FlaskConical}
             variant="primary"
@@ -93,25 +129,22 @@ const LaboratoryDashboard: React.FC = () => {
           <div className="bg-card rounded-xl border border-border p-6">
             <h3 className="font-semibold text-foreground mb-4">Pending Lab Tests</h3>
             <div className="space-y-3">
-              {[
-                { patient: 'Ali Hassan', mrNo: 'MR-0045', test: 'Complete Blood Count', status: 'awaiting-sample' },
-                { patient: 'Fatima Bibi', mrNo: 'MR-0089', test: 'Lipid Profile', status: 'processing' },
-                { patient: 'Usman Ali', mrNo: 'MR-0123', test: 'Liver Function Test', status: 'awaiting-sample' },
-                { patient: 'Sara Khan', mrNo: 'MR-0156', test: 'Thyroid Panel', status: 'processing' },
-              ].map((test, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              {pendingLabTests.length > 0 ? pendingLabTests.map((test: any, i: number) => (
+                <div key={test.id || i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                   <div>
-                    <p className="text-sm font-medium">{test.patient}</p>
+                    <p className="text-sm font-medium">{test.patientName}</p>
                     <p className="text-xs text-muted-foreground">{test.mrNo} • {test.test}</p>
                   </div>
-                  <span className={test.status === 'processing' ? 'badge-active' : 'badge-pending'}>
-                    {test.status === 'processing' ? 'Processing' : 'Awaiting Sample'}
+                  <span className={test.status === 'sample-collected' ? 'badge-active' : 'badge-pending'}>
+                    {test.status === 'sample-collected' ? 'Processing' : 'Awaiting Sample'}
                   </span>
                 </div>
-              ))}
+              )) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No pending tests</p>
+              )}
             </div>
           </div>
-          <RecentActivity title="Recent Activity" activities={mockActivities} />
+          <RecentActivity title="Recent Activity" activities={activities} />
         </div>
       </div>
     </DashboardLayout>

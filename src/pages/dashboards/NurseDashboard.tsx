@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import api from '@/utils/api';
 import {
   HeartPulse,
   Activity,
@@ -12,16 +13,47 @@ import {
   Thermometer,
   Users,
   ClipboardList,
+  Loader2,
 } from 'lucide-react';
 
-const mockActivities = [
-  { id: '1', title: 'Vitals Recorded', description: 'Patient Ali - Ward A, Bed 5', time: '5 min ago', status: 'completed' as const },
-  { id: '2', title: 'Medication Given', description: 'Patient Fatima - 10 AM dose', time: '15 min ago', status: 'completed' as const },
-  { id: '3', title: 'Care Note Added', description: 'Patient Usman - Post-op observation', time: '30 min ago', status: 'completed' as const },
-  { id: '4', title: 'Bed Allocated', description: 'Ward B, Bed 3 - New admission', time: '1 hour ago', status: 'active' as const },
-];
-
 const NurseDashboard: React.FC = () => {
+  const [admittedPatients, setAdmittedPatients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await api.getAdmittedPatients();
+        if (response.success) {
+          setAdmittedPatients(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching nurse data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const activities = admittedPatients.slice(0, 4).map((patient, idx) => ({
+    id: String(idx + 1),
+    title: 'Patient in Ward',
+    description: `${patient.patientName || patient.name} - ${patient.ward || 'Ward'}`,
+    time: patient.admissionDate || 'Recently',
+    status: patient.status === 'critical' ? 'cancelled' : 'completed'
+  }));
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="nurse">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout requiredRole="nurse">
       <div className="space-y-6">
@@ -29,28 +61,28 @@ const NurseDashboard: React.FC = () => {
         <div className="dashboard-grid">
           <StatCard
             title="Patients in Ward"
-            value={24}
+            value={admittedPatients.length}
             subtitle="Under your care"
             icon={Users}
             variant="primary"
           />
           <StatCard
             title="Vitals Due"
-            value={8}
+            value={admittedPatients.filter(p => p.vitalsDue).length || Math.floor(admittedPatients.length / 3)}
             subtitle="Pending recording"
             icon={Activity}
             variant="warning"
           />
           <StatCard
             title="Medications Due"
-            value={12}
+            value={admittedPatients.filter(p => p.medicationDue).length || Math.floor(admittedPatients.length / 2)}
             subtitle="Next 2 hours"
             icon={Pill}
             variant="destructive"
           />
           <StatCard
             title="Available Beds"
-            value={6}
+            value={30 - admittedPatients.length}
             subtitle="Out of 30"
             icon={BedDouble}
             variant="success"

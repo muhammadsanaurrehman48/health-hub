@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import api from '@/utils/api';
 import {
   Receipt,
   CreditCard,
@@ -12,16 +13,52 @@ import {
   DollarSign,
   Clock,
   CheckCircle,
+  Loader2,
 } from 'lucide-react';
 
-const mockActivities = [
-  { id: '1', title: 'Invoice Generated', description: 'INV-2025-0456 - Rs. 15,500', time: '5 min ago', status: 'completed' as const },
-  { id: '2', title: 'Payment Received', description: 'Cash payment - Rs. 8,200', time: '20 min ago', status: 'completed' as const },
-  { id: '3', title: 'Pending Payment', description: 'INV-2025-0450 - Rs. 25,000', time: '1 hour ago', status: 'pending' as const },
-  { id: '4', title: 'Refund Processed', description: 'REF-0023 - Rs. 2,500', time: '2 hours ago', status: 'completed' as const },
-];
-
 const BillingDashboard: React.FC = () => {
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await api.getInvoices();
+        if (response.success) {
+          setInvoices(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching invoices:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const paidInvoices = invoices.filter(i => i.status === 'paid');
+  const pendingInvoices = invoices.filter(i => i.status === 'pending');
+  const todayRevenue = paidInvoices.reduce((sum, i) => sum + (i.amount || 0), 0);
+  const pendingTotal = pendingInvoices.reduce((sum, i) => sum + (i.amount || 0), 0);
+  
+  const activities = invoices.slice(0, 4).map((inv, idx) => ({
+    id: String(idx + 1),
+    title: inv.status === 'paid' ? 'Payment Received' : 'Invoice Generated',
+    description: `${inv.invoiceNo || 'INV'} - Rs. ${inv.amount || 0}`,
+    time: inv.date || 'Recently',
+    status: inv.status === 'paid' ? 'completed' : 'pending'
+  }));
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="billing">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout requiredRole="billing">
       <div className="space-y-6">
@@ -29,7 +66,7 @@ const BillingDashboard: React.FC = () => {
         <div className="dashboard-grid">
           <StatCard
             title="Today's Revenue"
-            value="Rs. 245,000"
+            value={`Rs. ${todayRevenue.toLocaleString()}`}
             subtitle="Total collections"
             icon={TrendingUp}
             variant="success"
@@ -37,22 +74,22 @@ const BillingDashboard: React.FC = () => {
           />
           <StatCard
             title="Pending Payments"
-            value="Rs. 85,000"
-            subtitle="15 invoices"
+            value={`Rs. ${pendingTotal.toLocaleString()}`}
+            subtitle={`${pendingInvoices.length} invoices`}
             icon={Clock}
             variant="warning"
           />
           <StatCard
             title="Invoices Today"
-            value={42}
+            value={invoices.length}
             subtitle="Generated today"
             icon={Receipt}
             variant="primary"
           />
           <StatCard
             title="Monthly Revenue"
-            value="Rs. 4.2M"
-            subtitle="January 2025"
+            value={`Rs. ${(todayRevenue * 30).toLocaleString()}`}
+            subtitle="Estimated"
             icon={DollarSign}
             variant="success"
           />
@@ -116,7 +153,7 @@ const BillingDashboard: React.FC = () => {
               ))}
             </div>
           </div>
-          <RecentActivity title="Recent Transactions" activities={mockActivities} />
+          <RecentActivity title="Recent Transactions" activities={activities} />
         </div>
 
         {/* Recent Invoices Table */}

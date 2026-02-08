@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Clock, User, Stethoscope, Building } from 'lucide-react';
+import { Clock, User, Stethoscope, Building, Loader2 } from 'lucide-react';
+import api from '@/utils/api';
 import Logo from '@/assets/logo.png';
 
 /**
@@ -30,24 +31,24 @@ interface QueuePatient {
   status: 'serving' | 'waiting';
 }
 
-const mockQueueData = {
-  department: 'General Medicine',
-  doctor: 'Dr. Ahmad Khan',
-  room: 'Room 101',
-  currentToken: 'OPD-045',
-  patients: [
-    { tokenNo: 'OPD-045', patientName: 'Muhammad Ali', forceNo: 'F-12345', status: 'serving' as const },
-    { tokenNo: 'OPD-046', patientName: 'Fatima Begum', forceNo: 'F-12346', status: 'waiting' as const },
-    { tokenNo: 'OPD-047', patientName: 'Ahmed Khan', forceNo: 'F-12347', status: 'waiting' as const },
-    { tokenNo: 'OPD-048', patientName: 'Sara Bibi', forceNo: 'F-12348', status: 'waiting' as const },
-    { tokenNo: 'OPD-049', patientName: 'Usman Ali', forceNo: 'F-12349', status: 'waiting' as const },
-    { tokenNo: 'OPD-050', patientName: 'Zainab Fatima', forceNo: 'F-12350', status: 'waiting' as const },
-  ],
-};
+interface QueueData {
+  department: string;
+  doctor: string;
+  room: string;
+  currentToken: string;
+  patients: QueuePatient[];
+}
 
 const QueueDisplay: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [queueData, setQueueData] = useState(mockQueueData);
+  const [queueData, setQueueData] = useState<QueueData>({
+    department: 'General Medicine',
+    doctor: 'Loading...',
+    room: 'Room 101',
+    currentToken: '',
+    patients: []
+  });
+  const [loading, setLoading] = useState(true);
 
   // Update time every second
   useEffect(() => {
@@ -57,17 +58,37 @@ const QueueDisplay: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Simulate queue refresh every 30 seconds
+  // Fetch queue data from API
   useEffect(() => {
-    const refreshTimer = setInterval(() => {
-      // In real implementation, this would fetch from API
-      console.log('Queue refreshed');
-    }, 30000);
+    const fetchQueueData = async () => {
+      try {
+        const response = await api.getQueueData('general');
+        if (response.success) {
+          setQueueData(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching queue data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQueueData();
+
+    // Refresh every 30 seconds
+    const refreshTimer = setInterval(fetchQueueData, 30000);
     return () => clearInterval(refreshTimer);
   }, []);
 
   const servingPatient = queueData.patients.find(p => p.status === 'serving');
   const waitingPatients = queueData.patients.filter(p => p.status === 'waiting');
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5 flex items-center justify-center">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5 p-8">

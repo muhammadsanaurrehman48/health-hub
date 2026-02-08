@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import api from '@/utils/api';
 import {
   Package,
   Boxes,
@@ -12,16 +13,57 @@ import {
   ClipboardList,
   Calendar,
   TrendingDown,
+  Loader2,
 } from 'lucide-react';
 
-const mockActivities = [
-  { id: '1', title: 'Stock Added', description: 'Medical gloves - 1000 units', time: '10 min ago', status: 'completed' as const },
-  { id: '2', title: 'Items Issued', description: 'To Pharmacy dept - 50 items', time: '30 min ago', status: 'completed' as const },
-  { id: '3', title: 'Expiry Alert', description: 'Surgical masks - Expiring in 30 days', time: '1 hour ago', status: 'cancelled' as const },
-  { id: '4', title: 'Stock Audit', description: 'Monthly audit completed', time: '2 hours ago', status: 'completed' as const },
-];
-
 const InventoryDashboard: React.FC = () => {
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [inventoryRes, lowStockRes] = await Promise.all([
+          api.getInventory(),
+          api.getLowStockItems()
+        ]);
+        if (inventoryRes.success) {
+          setInventory(inventoryRes.data);
+        }
+        if (lowStockRes.success) {
+          setLowStockItems(lowStockRes.data);
+        }
+      } catch (error) {
+        console.error('Error fetching inventory data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const expiringItems = inventory.filter(i => i.expiringDays && i.expiringDays <= 30);
+  const categories = [...new Set(inventory.map(i => i.category))].length;
+
+  const activities = inventory.slice(0, 4).map((item, idx) => ({
+    id: String(idx + 1),
+    title: 'Stock Item',
+    description: `${item.name} - ${item.stock} ${item.unit || 'units'}`,
+    time: item.updatedAt || 'Recently',
+    status: item.stock < item.minStock ? 'cancelled' : 'completed'
+  }));
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="inventory">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout requiredRole="inventory">
       <div className="space-y-6">
@@ -29,28 +71,28 @@ const InventoryDashboard: React.FC = () => {
         <div className="dashboard-grid">
           <StatCard
             title="Total Items"
-            value={2450}
+            value={inventory.length}
             subtitle="In inventory"
             icon={Boxes}
             variant="primary"
           />
           <StatCard
             title="Low Stock"
-            value={18}
+            value={lowStockItems.length}
             subtitle="Need restocking"
             icon={TrendingDown}
             variant="warning"
           />
           <StatCard
             title="Expiring Soon"
-            value={12}
+            value={expiringItems.length}
             subtitle="Within 30 days"
             icon={Calendar}
             variant="destructive"
           />
           <StatCard
             title="Categories"
-            value={15}
+            value={categories}
             subtitle="Item categories"
             icon={Package}
             variant="success"
@@ -136,7 +178,7 @@ const InventoryDashboard: React.FC = () => {
               </div>
             </div>
           </div>
-          <RecentActivity title="Recent Transactions" activities={mockActivities} />
+          <RecentActivity title="Recent Transactions" activities={activities} />
         </div>
       </div>
     </DashboardLayout>

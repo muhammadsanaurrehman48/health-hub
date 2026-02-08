@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import api from '@/utils/api';
 import {
   Dialog,
   DialogContent,
@@ -13,27 +14,30 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Edit, Trash2, Users, Building2, Stethoscope } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Building2, Stethoscope, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-const mockDepartments = [
-  { id: '1', name: 'Cardiology', head: 'Dr. Ahmed Khan', staff: 12, patients: 45, status: 'active' },
-  { id: '2', name: 'General Medicine', head: 'Dr. Fatima Bibi', staff: 18, patients: 89, status: 'active' },
-  { id: '3', name: 'Orthopedics', head: 'Dr. Usman Ali', staff: 8, patients: 32, status: 'active' },
-  { id: '4', name: 'Pediatrics', head: 'Dr. Sara Khan', staff: 10, patients: 56, status: 'active' },
-  { id: '5', name: 'Radiology', head: 'Dr. Hassan Raza', staff: 6, patients: 0, status: 'active' },
-  { id: '6', name: 'Laboratory', head: 'Mr. Ali Ahmed', staff: 8, patients: 0, status: 'active' },
-  { id: '7', name: 'Pharmacy', head: 'Mr. Bilal Khan', staff: 5, patients: 0, status: 'active' },
-  { id: '8', name: 'Emergency', head: 'Dr. Nadia Hussain', staff: 15, patients: 23, status: 'active' },
-  { id: '9', name: 'Surgery', head: 'Dr. Tariq Mehmood', staff: 14, patients: 18, status: 'active' },
-  { id: '10', name: 'Gynecology', head: 'Dr. Ayesha Siddiqui', staff: 9, patients: 34, status: 'active' },
-  { id: '11', name: 'Dentistry', head: 'Dr. Kamran Ali', staff: 4, patients: 28, status: 'active' },
-  { id: '12', name: 'Psychiatry', head: 'Dr. Sana Malik', staff: 5, patients: 15, status: 'inactive' },
-];
 
 const Departments: React.FC = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newDept, setNewDept] = useState({ name: '', head: '', description: '' });
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await api.getDepartments();
+        if (response.success) {
+          setDepartments(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDepartments();
+  }, []);
 
   const handleAddDepartment = () => {
     if (!newDept.name) {
@@ -45,9 +49,19 @@ const Departments: React.FC = () => {
     setNewDept({ name: '', head: '', description: '' });
   };
 
-  const activeDepartments = mockDepartments.filter(d => d.status === 'active');
-  const totalStaff = mockDepartments.reduce((acc, d) => acc + d.staff, 0);
-  const totalPatients = mockDepartments.reduce((acc, d) => acc + d.patients, 0);
+  const activeDepartments = departments.filter(d => d.status === 'active' || !d.status);
+  const totalStaff = departments.reduce((acc, d) => acc + (d.staff || 0), 0);
+  const totalPatients = departments.reduce((acc, d) => acc + (d.patients || 0), 0);
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="admin">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="admin">
@@ -148,8 +162,8 @@ const Departments: React.FC = () => {
 
         {/* Department Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mockDepartments.map((dept) => (
-            <Card key={dept.id} className={dept.status === 'inactive' ? 'opacity-60' : ''}>
+          {departments.map((dept) => (
+            <Card key={dept.id || dept._id} className={dept.status === 'inactive' ? 'opacity-60' : ''}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{dept.name}</CardTitle>
@@ -167,20 +181,20 @@ const Departments: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Head:</span>
-                    <span className="font-medium">{dept.head}</span>
+                    <span className="font-medium">{dept.head || 'Not assigned'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Staff:</span>
-                    <span className="font-medium">{dept.staff}</span>
+                    <span className="font-medium">{dept.staff || 0}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Patients:</span>
-                    <span className="font-medium">{dept.patients}</span>
+                    <span className="font-medium">{dept.patients || 0}</span>
                   </div>
                   <div className="flex justify-between text-sm pt-2">
                     <span className="text-muted-foreground">Status:</span>
-                    <span className={dept.status === 'active' ? 'badge-completed' : 'badge-cancelled'}>
-                      {dept.status}
+                    <span className={dept.status === 'active' || !dept.status ? 'badge-completed' : 'badge-cancelled'}>
+                      {dept.status || 'active'}
                     </span>
                   </div>
                 </div>

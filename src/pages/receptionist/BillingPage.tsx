@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import api from '@/utils/api';
 import {
   Table,
   TableBody,
@@ -24,14 +25,9 @@ import {
   Printer,
   CreditCard,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import BillingInvoiceTemplate from '@/components/templates/BillingInvoiceTemplate';
-
-const mockInvoices = [
-  { id: '1', invoiceNo: 'INV-2025-0456', patientName: 'Muhammad Ali', mrNo: 'MR-001234', amount: 15500, status: 'paid', date: '2025-02-01' },
-  { id: '2', invoiceNo: 'INV-2025-0455', patientName: 'Fatima Begum', mrNo: 'MR-001235', amount: 8200, status: 'pending', date: '2025-02-01' },
-  { id: '3', invoiceNo: 'INV-2025-0454', patientName: 'Ahmed Khan', mrNo: 'MR-001236', amount: 25000, status: 'partial', date: '2025-01-31' },
-];
 
 const serviceItems = [
   { id: '1', name: 'OPD Consultation', department: 'OPD', price: 500 },
@@ -54,12 +50,30 @@ const BillingPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('list');
   const [selectedInvoice, setSelectedInvoice] = useState<typeof sampleInvoice | null>(null);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // New bill form
   const [billMrNo, setBillMrNo] = useState('');
   const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [selectedService, setSelectedService] = useState('');
   const [quantity, setQuantity] = useState('1');
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        const response = await api.getInvoices();
+        if (response.success) {
+          setInvoices(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching invoices:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInvoices();
+  }, []);
 
   const addItemToBill = () => {
     const service = serviceItems.find((s) => s.id === selectedService);

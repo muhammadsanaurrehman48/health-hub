@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import api from '@/utils/api';
 import {
   Table,
   TableBody,
@@ -34,21 +35,31 @@ import {
   Boxes,
   TrendingDown,
   ArrowRightLeft,
+  Loader2,
 } from 'lucide-react';
-
-const mockInventoryItems = [
-  { id: '1', name: 'Surgical Gloves (Large)', category: 'Consumables', stock: 500, minStock: 200, unit: 'pairs', location: 'Store A', supplier: 'MedSupply Co.' },
-  { id: '2', name: 'Syringes 5ml', category: 'Consumables', stock: 150, minStock: 300, unit: 'pieces', location: 'Store A', supplier: 'HealthPro Ltd.' },
-  { id: '3', name: 'Paracetamol 500mg', category: 'Medicines', stock: 1500, minStock: 500, unit: 'tablets', location: 'Pharmacy', supplier: 'PharmaPlus' },
-  { id: '4', name: 'Wheelchair', category: 'Equipment', stock: 10, minStock: 5, unit: 'units', location: 'Main Ward', supplier: 'MedEquip Inc.' },
-  { id: '5', name: 'Blood Pressure Monitor', category: 'Equipment', stock: 8, minStock: 5, unit: 'units', location: 'OPD', supplier: 'MedEquip Inc.' },
-  { id: '6', name: 'Cotton Bandages', category: 'Consumables', stock: 50, minStock: 100, unit: 'rolls', location: 'Store B', supplier: 'MedSupply Co.' },
-];
 
 const InventoryItems: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await api.getInventory();
+        if (response.success) {
+          setInventoryItems(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching inventory:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, []);
 
   const getStockStatus = (stock: number, minStock: number) => {
     if (stock <= 0) return <Badge variant="destructive">Out of Stock</Badge>;
@@ -56,13 +67,23 @@ const InventoryItems: React.FC = () => {
     return <Badge className="bg-success text-success-foreground">In Stock</Badge>;
   };
 
-  const filteredItems = mockInventoryItems.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || item.category.toLowerCase() === categoryFilter;
+  const filteredItems = inventoryItems.filter((item) => {
+    const matchesSearch = item.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || item.category?.toLowerCase() === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
-  const lowStockItems = mockInventoryItems.filter(i => i.stock < i.minStock);
+  const lowStockItems = inventoryItems.filter(i => i.stock < i.minStock);
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="inventory">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="inventory">
@@ -145,8 +166,34 @@ const InventoryItems: React.FC = () => {
                   <Boxes className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockInventoryItems.length}</p>
+                  <p className="text-2xl font-bold">{inventoryItems.length}</p>
                   <p className="text-sm text-muted-foreground">Total Items</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <TrendingDown className="w-5 h-5 text-warning" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{lowStockItems.length}</p>
+                  <p className="text-sm text-muted-foreground">Low Stock</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                  <Package className="w-5 h-5 text-success" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{inventoryItems.filter(i => i.category === 'Medicines').length}</p>
+                  <p className="text-sm text-muted-foreground">Medicines</p>
                 </div>
               </div>
             </CardContent>

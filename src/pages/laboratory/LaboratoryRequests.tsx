@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import api from '@/utils/api';
 import {
   Table,
   TableBody,
@@ -31,20 +32,32 @@ import {
   PlayCircle,
   FileText,
   Printer,
+  Loader2,
 } from 'lucide-react';
-
-const mockLabRequests = [
-  { id: '1', requestNo: 'LAB-2025-0123', patientName: 'Muhammad Ali', mrNo: 'MR-001234', forceNo: 'F-12345', test: 'Complete Blood Count', doctor: 'Dr. Ahmad Khan', requestDate: '2025-02-01', status: 'pending' },
-  { id: '2', requestNo: 'LAB-2025-0122', patientName: 'Fatima Begum', mrNo: 'MR-001235', forceNo: 'F-12346', test: 'Blood Sugar Fasting', doctor: 'Dr. Sara Ali', requestDate: '2025-02-01', status: 'sample-collected' },
-  { id: '3', requestNo: 'LAB-2025-0121', patientName: 'Ahmed Khan', mrNo: 'MR-001236', forceNo: 'F-12347', test: 'Lipid Profile', doctor: 'Dr. Ahmad Khan', requestDate: '2025-01-31', status: 'completed' },
-  { id: '4', requestNo: 'LAB-2025-0120', patientName: 'Sara Bibi', mrNo: 'MR-001237', forceNo: 'F-12348', test: 'HbA1c', doctor: 'Dr. Usman Malik', requestDate: '2025-01-31', status: 'in-progress' },
-];
 
 const LaboratoryRequests: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [isResultDialogOpen, setIsResultDialogOpen] = useState(false);
   const [resultText, setResultText] = useState('');
+  const [labRequests, setLabRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLabRequests = async () => {
+      try {
+        const response = await api.getLabRequests();
+        if (response.success) {
+          setLabRequests(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching lab requests:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLabRequests();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -76,11 +89,21 @@ const LaboratoryRequests: React.FC = () => {
     setResultText('');
   };
 
-  const filteredRequests = mockLabRequests.filter((req) =>
-    req.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.mrNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.requestNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRequests = labRequests.filter((req) =>
+    req.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    req.mrNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    req.requestNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="laboratory">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="laboratory">
@@ -101,7 +124,7 @@ const LaboratoryRequests: React.FC = () => {
                   <Clock className="w-5 h-5 text-warning" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockLabRequests.filter(r => r.status === 'pending').length}</p>
+                  <p className="text-2xl font-bold">{labRequests.filter(r => r.status === 'pending').length}</p>
                   <p className="text-sm text-muted-foreground">Pending</p>
                 </div>
               </div>
@@ -114,7 +137,7 @@ const LaboratoryRequests: React.FC = () => {
                   <FlaskConical className="w-5 h-5 text-blue-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockLabRequests.filter(r => r.status === 'sample-collected').length}</p>
+                  <p className="text-2xl font-bold">{labRequests.filter(r => r.status === 'sample-collected').length}</p>
                   <p className="text-sm text-muted-foreground">Sample Collected</p>
                 </div>
               </div>
@@ -127,7 +150,7 @@ const LaboratoryRequests: React.FC = () => {
                   <PlayCircle className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockLabRequests.filter(r => r.status === 'in-progress').length}</p>
+                  <p className="text-2xl font-bold">{labRequests.filter(r => r.status === 'in-progress').length}</p>
                   <p className="text-sm text-muted-foreground">In Progress</p>
                 </div>
               </div>
@@ -140,7 +163,7 @@ const LaboratoryRequests: React.FC = () => {
                   <CheckCircle className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockLabRequests.filter(r => r.status === 'completed').length}</p>
+                  <p className="text-2xl font-bold">{labRequests.filter(r => r.status === 'completed').length}</p>
                   <p className="text-sm text-muted-foreground">Completed Today</p>
                 </div>
               </div>

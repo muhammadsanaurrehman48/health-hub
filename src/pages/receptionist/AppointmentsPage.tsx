@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import api from '@/utils/api';
 import {
   Table,
   TableBody,
@@ -36,31 +37,47 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
+  Loader2,
 } from 'lucide-react';
-
-const mockDoctors = [
-  { id: '1', name: 'Dr. Ahmad Khan', department: 'Cardiology', slots: 10 },
-  { id: '2', name: 'Dr. Sara Ali', department: 'Pediatrics', slots: 8 },
-  { id: '3', name: 'Dr. Usman Malik', department: 'Orthopedics', slots: 12 },
-  { id: '4', name: 'Dr. Fatima Bibi', department: 'Gynecology', slots: 6 },
-];
-
-const mockAppointments = [
-  { id: '1', patientName: 'Muhammad Ali', mrNo: 'MR-001234', doctor: 'Dr. Ahmad Khan', department: 'Cardiology', date: '2025-02-01', time: '10:00 AM', status: 'scheduled' },
-  { id: '2', patientName: 'Fatima Begum', mrNo: 'MR-001235', doctor: 'Dr. Sara Ali', department: 'Pediatrics', date: '2025-02-01', time: '10:30 AM', status: 'completed' },
-  { id: '3', patientName: 'Ahmed Khan', mrNo: 'MR-001236', doctor: 'Dr. Usman Malik', department: 'Orthopedics', date: '2025-02-01', time: '11:00 AM', status: 'cancelled' },
-  { id: '4', patientName: 'Sara Bibi', mrNo: 'MR-001237', doctor: 'Dr. Ahmad Khan', department: 'Cardiology', date: '2025-02-01', time: '11:30 AM', status: 'scheduled' },
-];
 
 const AppointmentsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // New appointment form
   const [newMrNo, setNewMrNo] = useState('');
   const [newDoctor, setNewDoctor] = useState('');
   const [newTime, setNewTime] = useState('');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [appointmentsRes, departmentsRes] = await Promise.all([
+          api.getAppointments(),
+          api.getDepartments()
+        ]);
+        if (appointmentsRes.success) {
+          setAppointments(appointmentsRes.data);
+        }
+        if (departmentsRes.success) {
+          // Extract doctors from departments or use directly
+          const allDoctors = departmentsRes.data.flatMap((dept: any) => 
+            dept.doctors?.map((doc: any) => ({ ...doc, department: dept.name })) || []
+          );
+          setDoctors(allDoctors.length > 0 ? allDoctors : departmentsRes.data);
+        }
+      } catch (error) {
+        console.error('Error fetching appointments:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -83,10 +100,20 @@ const AppointmentsPage: React.FC = () => {
     setNewTime('');
   };
 
-  const filteredAppointments = mockAppointments.filter((apt) =>
-    apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    apt.mrNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredAppointments = appointments.filter((apt) =>
+    apt.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    apt.mrNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="receptionist">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="receptionist">
@@ -123,8 +150,8 @@ const AppointmentsPage: React.FC = () => {
                       <SelectValue placeholder="Choose a doctor" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockDoctors.map((doc) => (
-                        <SelectItem key={doc.id} value={doc.id}>
+                      {doctors.map((doc) => (
+                        <SelectItem key={doc.id || doc._id} value={doc.id || doc._id}>
                           {doc.name} - {doc.department}
                         </SelectItem>
                       ))}
@@ -179,8 +206,8 @@ const AppointmentsPage: React.FC = () => {
 
         {/* Doctor Availability */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {mockDoctors.map((doc) => (
-            <Card key={doc.id}>
+          {doctors.slice(0, 4).map((doc) => (
+            <Card key={doc.id || doc._id}>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -193,7 +220,7 @@ const AppointmentsPage: React.FC = () => {
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Available Slots:</span>
-                  <Badge variant="outline">{doc.slots}</Badge>
+                  <Badge variant="outline">{doc.slots || 10}</Badge>
                 </div>
               </CardContent>
             </Card>
