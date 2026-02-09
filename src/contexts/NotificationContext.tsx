@@ -23,58 +23,8 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-// Mock initial notifications for demo
-const initialNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'info',
-    title: 'New Lab Request',
-    message: 'Dr. Ahmad Khan has requested CBC for patient F-12345',
-    timestamp: new Date(Date.now() - 5 * 60000), // 5 mins ago
-    read: false,
-    source: 'Laboratory',
-    link: '/laboratory/requests',
-  },
-  {
-    id: '2',
-    type: 'warning',
-    title: 'Low Stock Alert',
-    message: 'Paracetamol 500mg is running low (50 units remaining)',
-    timestamp: new Date(Date.now() - 30 * 60000), // 30 mins ago
-    read: false,
-    source: 'Inventory',
-    link: '/inventory/alerts',
-  },
-  {
-    id: '3',
-    type: 'success',
-    title: 'Prescription Filled',
-    message: 'Rx #4521 for Muhammad Ali has been dispensed',
-    timestamp: new Date(Date.now() - 60 * 60000), // 1 hour ago
-    read: true,
-    source: 'Pharmacy',
-  },
-  {
-    id: '4',
-    type: 'info',
-    title: 'New Referral Received',
-    message: 'Patient Sara Bibi referred to Cardiology department',
-    timestamp: new Date(Date.now() - 2 * 60 * 60000), // 2 hours ago
-    read: true,
-    source: 'Doctor',
-    link: '/doctor/referrals',
-  },
-  {
-    id: '5',
-    type: 'error',
-    title: 'Critical Lab Result',
-    message: 'Urgent: Abnormal ECG findings for patient F-12347',
-    timestamp: new Date(Date.now() - 10 * 60000), // 10 mins ago
-    read: false,
-    source: 'Laboratory',
-    link: '/laboratory/results',
-  },
-];
+// Start with empty notifications - they'll update dynamically with time
+const initialNotifications: Notification[] = [];
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);

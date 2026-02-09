@@ -143,6 +143,37 @@ const BillingPage: React.FC = () => {
     createdBy: 'Receptionist - Ali Hassan',
   };
 
+  const handlePrintInvoice = (invoice: any) => {
+    // Convert API data to match InvoiceData interface
+    const invoiceData = {
+      invoiceNo: invoice.invoiceNo,
+      date: invoice.date,
+      dueDate: invoice.dueDate || new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
+      status: invoice.status || 'pending' as const,
+      patientType: invoice.patientType,
+      patient: {
+        name: invoice.patient?.name || invoice.patientName || 'N/A',
+        mrNo: invoice.patient?.mrNo || invoice.mrNo || '',
+        forceNo: invoice.patient?.forceNo || invoice.forceNo || '',
+        phone: invoice.patient?.phone || invoice.phone || '',
+        address: invoice.patient?.address || invoice.address || '',
+      },
+      items: invoice.items || [],
+      subtotal: invoice.subtotal || 0,
+      discount: invoice.discount || 0,
+      tax: invoice.tax || 0,
+      grandTotal: invoice.grandTotal || invoice.amount || 0,
+      amountPaid: invoice.amountPaid || 0,
+      balance: invoice.balance || 0,
+      paymentMethod: invoice.paymentMethod || '',
+      paymentRef: invoice.paymentRef || '',
+      createdBy: invoice.createdBy || 'Receptionist',
+    };
+    setSelectedInvoice(invoiceData as typeof sampleInvoice);
+    setActiveTab('view');
+    // The print button is in the BillingInvoiceTemplate component itself
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       paid: 'bg-success text-success-foreground',
@@ -198,6 +229,17 @@ const BillingPage: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+                    <p className="text-muted-foreground mt-2">Loading invoices...</p>
+                  </div>
+                ) : invoices.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Receipt className="w-8 h-8 mx-auto text-muted-foreground opacity-50" />
+                    <p className="text-muted-foreground mt-2">No invoices found</p>
+                  </div>
+                ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -211,13 +253,13 @@ const BillingPage: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockInvoices.map((inv) => (
-                      <TableRow key={inv.id}>
+                    {invoices.map((inv) => (
+                      <TableRow key={inv.id || inv.invoiceNo}>
                         <TableCell className="font-bold text-primary">{inv.invoiceNo}</TableCell>
-                        <TableCell className="font-medium">{inv.patientName}</TableCell>
-                        <TableCell>{inv.mrNo}</TableCell>
+                        <TableCell className="font-medium">{inv.patient?.name || inv.patientName || '-'}</TableCell>
+                        <TableCell>{inv.patient?.mrNo || inv.mrNo || '-'}</TableCell>
                         <TableCell>{inv.date}</TableCell>
-                        <TableCell>Rs. {inv.amount.toLocaleString()}</TableCell>
+                        <TableCell>Rs. {(inv.grandTotal || inv.amount || 0).toLocaleString()}</TableCell>
                         <TableCell>{getStatusBadge(inv.status)}</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-2">
@@ -225,13 +267,38 @@ const BillingPage: React.FC = () => {
                               variant="ghost"
                               size="icon"
                               onClick={() => {
-                                setSelectedInvoice(sampleInvoice);
+                                // Convert API data to match InvoiceData interface
+                                const invoiceData = {
+                                  invoiceNo: inv.invoiceNo,
+                                  date: inv.date,
+                                  dueDate: inv.dueDate || new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
+                                  status: inv.status || 'pending' as const,
+                                  patientType: inv.patientType,
+                                  patient: {
+                                    name: inv.patient?.name || inv.patientName || 'N/A',
+                                    mrNo: inv.patient?.mrNo || inv.mrNo || '',
+                                    forceNo: inv.patient?.forceNo || inv.forceNo || '',
+                                    phone: inv.patient?.phone || inv.phone || '',
+                                    address: inv.patient?.address || inv.address || '',
+                                  },
+                                  items: inv.items || [],
+                                  subtotal: inv.subtotal || 0,
+                                  discount: inv.discount || 0,
+                                  tax: inv.tax || 0,
+                                  grandTotal: inv.grandTotal || inv.amount || 0,
+                                  amountPaid: inv.amountPaid || 0,
+                                  balance: inv.balance || 0,
+                                  paymentMethod: inv.paymentMethod || '',
+                                  paymentRef: inv.paymentRef || '',
+                                  createdBy: inv.createdBy || 'Receptionist',
+                                };
+                                setSelectedInvoice(invoiceData as typeof sampleInvoice);
                                 setActiveTab('view');
                               }}
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" onClick={() => handlePrintInvoice(inv)} title="Print Invoice">
                               <Printer className="w-4 h-4" />
                             </Button>
                             {inv.status === 'pending' && (
@@ -245,6 +312,7 @@ const BillingPage: React.FC = () => {
                     ))}
                   </TableBody>
                 </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

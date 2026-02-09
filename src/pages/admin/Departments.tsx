@@ -39,14 +39,44 @@ const Departments: React.FC = () => {
     fetchDepartments();
   }, []);
 
-  const handleAddDepartment = () => {
+  const handleAddDepartment = async () => {
     if (!newDept.name) {
       toast.error('Please enter department name');
       return;
     }
-    toast.success(`Department ${newDept.name} created successfully`);
-    setIsAddDialogOpen(false);
-    setNewDept({ name: '', head: '', description: '' });
+    try {
+      const response = await api.createDepartment({
+        name: newDept.name,
+        description: newDept.description,
+        head: newDept.head,
+      });
+      if (response.success) {
+        toast.success(`Department ${newDept.name} created successfully`);
+        setDepartments([...departments, response.data]);
+        setIsAddDialogOpen(false);
+        setNewDept({ name: '', head: '', description: '' });
+      } else {
+        toast.error(response.message || 'Failed to create department');
+      }
+    } catch (error) {
+      console.error('Error creating department:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create department');
+    }
+  };
+
+  const handleDeleteDepartment = async (deptId: string, deptName: string) => {
+    try {
+      const response = await api.deleteDepartment(deptId);
+      if (response.success) {
+        toast.success(`Department ${deptName} deleted successfully`);
+        setDepartments(departments.filter(d => (d.id || d._id) !== deptId));
+      } else {
+        toast.error(response.message || 'Failed to delete department');
+      }
+    } catch (error) {
+      console.error('Error deleting department:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete department');
+    }
   };
 
   const activeDepartments = departments.filter(d => d.status === 'active' || !d.status);
@@ -171,7 +201,7 @@ const Departments: React.FC = () => {
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteDepartment(dept.id || dept._id, dept.name)}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </div>

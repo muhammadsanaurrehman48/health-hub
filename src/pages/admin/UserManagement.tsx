@@ -36,6 +36,8 @@ const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
   const [newUser, setNewUser] = useState({ name: '', email: '', role: '', department: '', password: '' });
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,18 +65,77 @@ const UserManagement: React.FC = () => {
     return matchesSearch && matchesRole;
   });
 
-  const handleAddUser = () => {
-    if (!newUser.name || !newUser.email || !newUser.role) {
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.role || !newUser.password) {
       toast.error('Please fill in all required fields');
       return;
     }
-    toast.success(`User ${newUser.name} created successfully`);
-    setIsAddDialogOpen(false);
-    setNewUser({ name: '', email: '', role: '', department: '', password: '' });
+    try {
+      const response = await api.createUser({
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        department: newUser.department,
+        password: newUser.password,
+      });
+      if (response.success) {
+        toast.success(`User ${newUser.name} created successfully`);
+        setUsers([...users, response.data]);
+        setIsAddDialogOpen(false);
+        setNewUser({ name: '', email: '', role: '', department: '', password: '' });
+      } else {
+        toast.error(response.message || 'Failed to create user');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create user');
+    }
   };
 
-  const handleDeleteUser = (userName: string) => {
-    toast.success(`User ${userName} deleted successfully`);
+  const handleEditUser = (user: any) => {
+    setEditingUser({ ...user });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser.name || !editingUser.email || !editingUser.role) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    try {
+      const response = await api.updateUser(editingUser.id, {
+        name: editingUser.name,
+        email: editingUser.email,
+        role: editingUser.role,
+        department: editingUser.department,
+      });
+      if (response.success) {
+        toast.success(`User ${editingUser.name} updated successfully`);
+        setUsers(users.map(u => u.id === editingUser.id ? response.data : u));
+        setIsEditDialogOpen(false);
+        setEditingUser(null);
+      } else {
+        toast.error(response.message || 'Failed to update user');
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update user');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    try {
+      const response = await api.deleteUser(userId);
+      if (response.success) {
+        toast.success(`User ${userName} deleted successfully`);
+        setUsers(users.filter(u => u.id !== userId));
+      } else {
+        toast.error(response.message || 'Failed to delete user');
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete user');
+    }
   };
 
   const handleToggleStatus = (userName: string, currentStatus: string) => {
@@ -169,6 +230,64 @@ const UserManagement: React.FC = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Edit User Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Edit User</DialogTitle>
+                <DialogDescription>Update user information and assign roles</DialogDescription>
+              </DialogHeader>
+              {editingUser && (
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Full Name *</Label>
+                    <Input
+                      placeholder="Enter full name"
+                      value={editingUser.name}
+                      onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email *</Label>
+                    <Input
+                      type="email"
+                      placeholder="Enter email address"
+                      value={editingUser.email}
+                      onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Role *</Label>
+                    <Select value={editingUser.role} onValueChange={(value) => setEditingUser({ ...editingUser, role: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rolesList.map((role) => (
+                          <SelectItem key={role.role} value={role.role}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Department</Label>
+                    <Input
+                      placeholder="Enter department"
+                      value={editingUser.department}
+                      onChange={(e) => setEditingUser({ ...editingUser, department: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleUpdateUser}>Update User</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Filters */}
@@ -230,7 +349,7 @@ const UserManagement: React.FC = () => {
                   <TableCell>{user.createdAt}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="icon" title="Edit">
+                      <Button variant="ghost" size="icon" title="Edit" onClick={() => handleEditUser(user)}>
                         <Edit className="w-4 h-4" />
                       </Button>
                       <Button
@@ -249,7 +368,7 @@ const UserManagement: React.FC = () => {
                         variant="ghost"
                         size="icon"
                         title="Delete"
-                        onClick={() => handleDeleteUser(user.name)}
+                        onClick={() => handleDeleteUser(user.id, user.name)}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>

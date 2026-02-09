@@ -36,6 +36,7 @@ import PatientSearchPage from "./pages/receptionist/PatientSearchPage";
 import AppointmentsPage from "./pages/receptionist/AppointmentsPage";
 import EntriesPage from "./pages/receptionist/EntriesPage";
 import BillingPage from "./pages/receptionist/BillingPage";
+import ReceptionistDocuments from "./pages/receptionist/ReceptionistDocuments";
 
 // Doctor Pages
 import DoctorAppointments from "./pages/doctor/DoctorAppointments";
@@ -93,7 +94,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/queue-display" element={<QueueDisplay />} />
+              <Route path="/queue-display/:roomNo" element={<QueueDisplay />} />
             
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />
@@ -110,6 +111,7 @@ const App = () => (
             <Route path="/receptionist/appointments" element={<AppointmentsPage />} />
             <Route path="/receptionist/entries" element={<EntriesPage />} />
             <Route path="/receptionist/billing" element={<BillingPage />} />
+            <Route path="/receptionist/documents" element={<ReceptionistDocuments />} />
             
               {/* Doctor Routes */}
               <Route path="/doctor" element={<DoctorDashboard />} />

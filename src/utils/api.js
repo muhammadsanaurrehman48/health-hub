@@ -72,14 +72,31 @@ class ApiClient {
   }
 
   // User endpoints
+  async getUsers() {
+    return this.request('/users');
+  }
+
   async getUser(userId) {
     return this.request(`/users/${userId}`);
+  }
+
+  async createUser(data) {
+    return this.request('/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   async updateUserProfile(userId, data) {
     return this.request(`/users/profile/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  async deleteUser(userId) {
+    return this.request(`/users/${userId}`, {
+      method: 'DELETE',
     });
   }
 
@@ -313,8 +330,42 @@ class ApiClient {
     return this.request('/admin/billing-overview');
   }
 
-  async getReports() {
-    return this.request('/admin/reports');
+  async getReports(period = '6months') {
+    return this.request(`/admin/reports?period=${period}`);
+  }
+
+  async getAnalyticsData(period = '6months') {
+    return this.request(`/admin/analytics?period=${period}`);
+  }
+
+  async downloadReport(reportType, format = 'csv') {
+    const token = this.getAuthToken();
+    const url = `${this.baseURL}/admin/download-report?type=${reportType}&format=${format}`;
+    
+    try {
+      const headers = {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      };
+      
+      const response = await fetch(url, { headers });
+      
+      if (!response.ok) {
+        throw new Error('Failed to download report');
+      }
+      
+      const blob = await response.blob();
+      return blob;
+    } catch (error) {
+      console.error('Download error:', error);
+      throw error;
+    }
+  }
+
+  async updateUser(userId, data) {
+    return this.request(`/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   }
 
   // Department endpoints
@@ -322,15 +373,92 @@ class ApiClient {
     return this.request('/departments');
   }
 
-  // Queue endpoints
+  async getDepartment(departmentId) {
+    return this.request(`/departments/${departmentId}`);
+  }
+
+  async createDepartment(data) {
+    return this.request('/departments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateDepartment(departmentId, data) {
+    return this.request(`/departments/${departmentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteDepartment(departmentId) {
+    return this.request(`/departments/${departmentId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Queue endpoints (updated for room-based system)
   async getQueueData(departmentId) {
     return this.request(`/queue/${departmentId}`);
+  }
+
+  async getQueueByRoom(roomNo) {
+    return this.request(`/queue/room/${roomNo}`);
+  }
+
+  async getAllQueues() {
+    return this.request('/queue');
+  }
+
+  async moveToNextPatient(roomNo) {
+    return this.request(`/queue/room/${roomNo}/next-patient`, {
+      method: 'POST',
+    });
+  }
+
+  async completeAppointment(roomNo, appointmentId) {
+    return this.request(`/queue/room/${roomNo}/complete-appointment/${appointmentId}`, {
+      method: 'POST',
+    });
+  }
+
+  async skipPatient(roomNo, patientIndex) {
+    return this.request(`/queue/room/${roomNo}/skip-patient/${patientIndex}`, {
+      method: 'POST',
+    });
   }
 
   async updateCurrentToken(departmentId, tokenNo) {
     return this.request(`/queue/${departmentId}/current-token`, {
       method: 'PUT',
       body: JSON.stringify({ tokenNo }),
+    });
+  }
+
+  // Vitals endpoints
+  async recordVitals(data) {
+    return this.request('/vitals', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPatientVitals(patientId) {
+    return this.request(`/vitals/patient/${patientId}`);
+  }
+
+  async getLatestVitals(patientId) {
+    return this.request(`/vitals/patient/${patientId}/latest`);
+  }
+
+  async getAppointmentVitals(appointmentId) {
+    return this.request(`/vitals/appointment/${appointmentId}`);
+  }
+
+  async updateVitals(vitalId, data) {
+    return this.request(`/vitals/${vitalId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 }

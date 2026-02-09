@@ -34,8 +34,11 @@ const PatientRegistrationForm: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Patient Basic Info
+  // Patient Type and Force Info
+  const [patientType, setPatientType] = useState<'ASF' | 'ASF_FAMILY' | 'CIVILIAN'>('CIVILIAN');
   const [forceNo, setForceNo] = useState('');
+  
+  // Patient Basic Info
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState('');
@@ -80,14 +83,23 @@ const PatientRegistrationForm: React.FC = () => {
     setIsLoading(true);
 
     try {
-      if (!forceNo || !firstName || !lastName || !phone || !address || !city) {
+      // Validate required fields
+      if (!firstName || !lastName || !phone || !address || !city) {
         toast.error('Please fill in all required fields');
         setIsLoading(false);
         return;
       }
 
+      // Validate Force No for ASF types
+      if ((patientType === 'ASF' || patientType === 'ASF_FAMILY') && !forceNo) {
+        toast.error('Force No is required for ASF patients');
+        setIsLoading(false);
+        return;
+      }
+
       const patientData = {
-        forceNo,
+        patientType,
+        forceNo: patientType !== 'CIVILIAN' ? forceNo : undefined,
         firstName,
         lastName,
         gender,
@@ -112,7 +124,7 @@ const PatientRegistrationForm: React.FC = () => {
 
       if (response.success) {
         toast.success('Patient registered successfully!', {
-          description: `Force No: ${forceNo} - ${firstName} ${lastName}`,
+          description: `${response.data.patientNo} - ${firstName} ${lastName}`,
         });
         navigate('/receptionist/patients/search');
       } else {
@@ -140,6 +152,48 @@ const PatientRegistrationForm: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Patient Type Selection */}
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-blue-600" />
+              Patient Type
+            </CardTitle>
+            <CardDescription>Select the type of patient</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="patientType">Patient Type *</Label>
+                <Select value={patientType} onValueChange={(value: any) => setPatientType(value)} required>
+                  <SelectTrigger id="patientType">
+                    <SelectValue placeholder="Select Patient Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ASF">ASF (Armed Services)</SelectItem>
+                    <SelectItem value="ASF_FAMILY">ASF Family</SelectItem>
+                    <SelectItem value="CIVILIAN">Civilian</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Force No - Only for ASF and ASF_FAMILY */}
+              {(patientType === 'ASF' || patientType === 'ASF_FAMILY') && (
+                <div className="space-y-2">
+                  <Label htmlFor="forceNo">Force No *</Label>
+                  <Input
+                    id="forceNo"
+                    placeholder="Enter Force Number"
+                    value={forceNo}
+                    onChange={(e) => setForceNo(e.target.value)}
+                    required={patientType !== 'CIVILIAN'}
+                  />
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Basic Information */}
         <Card>
           <CardHeader>
@@ -150,16 +204,6 @@ const PatientRegistrationForm: React.FC = () => {
             <CardDescription>Patient's personal details</CardDescription>
           </CardHeader>
           <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="forceNo">Force No *</Label>
-              <Input
-                id="forceNo"
-                placeholder="Enter Force Number"
-                value={forceNo}
-                onChange={(e) => setForceNo(e.target.value)}
-                required
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="cnic">CNIC</Label>
               <Input

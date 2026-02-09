@@ -11,7 +11,7 @@ interface StatCardProps {
     value: number;
     isPositive: boolean;
   };
-  variant?: 'default' | 'primary' | 'success' | 'warning' | 'destructive';
+  variant?: 'default' | 'primary' | 'success' | 'warning' | 'info' | 'destructive';
 }
 
 const variants = {
@@ -27,6 +27,9 @@ const variants = {
   warning: {
     icon: 'bg-warning-muted text-warning',
   },
+  info: {
+    icon: 'bg-blue-100 text-blue-600',
+  },
   destructive: {
     icon: 'bg-destructive-muted text-destructive',
   },
@@ -40,7 +43,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   trend,
   variant = 'default',
 }) => {
-  const variantStyles = variants[variant];
+  const variantStyles = variants[variant] || variants.default;
 
   return (
     <div className="stat-card">
@@ -63,9 +66,11 @@ export const StatCard: React.FC<StatCardProps> = ({
             </p>
           )}
         </div>
-        <div className={cn('stat-card-icon', variantStyles.icon)}>
-          <Icon className="w-6 h-6" />
-        </div>
+        {Icon && (
+          <div className={cn('stat-card-icon', variantStyles.icon)}>
+            <Icon className="w-6 h-6" />
+          </div>
+        )}
       </div>
     </div>
   );

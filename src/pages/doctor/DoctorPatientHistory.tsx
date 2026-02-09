@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ import {
   Pill,
   Beaker,
   Scan,
+  ArrowLeft,
 } from 'lucide-react';
 
 const mockPatientHistory = [
@@ -64,8 +66,24 @@ const mockPatientHistory = [
 ];
 
 const DoctorPatientHistory: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
+
+  // Get patient from route state if passed from queue
+  useEffect(() => {
+    if (location.state?.patient) {
+      setSelectedPatient({
+        mrNo: location.state.patient.forceNo || 'N/A',
+        name: location.state.patient.patientName,
+        age: location.state.patient.age || 30,
+        gender: location.state.patient.gender || 'N/A',
+        bloodGroup: 'A+',
+        phone: 'Not available',
+      });
+    }
+  }, [location.state]);
 
   const mockPatients = [
     { mrNo: 'MR-001234', name: 'Muhammad Ali', age: 45, gender: 'Male', bloodGroup: 'A+', phone: '0300-1234567' },
@@ -84,29 +102,46 @@ const DoctorPatientHistory: React.FC = () => {
   return (
     <DashboardLayout requiredRole="doctor">
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Patient Medical History</h2>
-          <p className="text-muted-foreground">View complete medical records of patients</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Patient Medical History</h2>
+            <p className="text-muted-foreground">View complete medical records of patients</p>
+          </div>
+          {selectedPatient && location.state?.patient && (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setSelectedPatient(null);
+                navigate(-1);
+              }}
+              className="gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Queue
+            </Button>
+          )}
         </div>
 
-        {/* Search */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by MR No or Patient Name..."
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                />
+        {/* Search - Only show if no patient passed via route state */}
+        {!location.state?.patient && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by MR No or Patient Name..."
+                    className="pl-10"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <Button onClick={handleSearch}>Search</Button>
               </div>
-              <Button onClick={handleSearch}>Search</Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {selectedPatient && (
           <>

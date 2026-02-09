@@ -4,25 +4,28 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Printer, Download, CheckCircle } from 'lucide-react';
-import Logo from '@/assets/logo.png';
 
 interface InvoiceItem {
-  description: string;
-  department: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
+  description?: string;
+  name?: string;
+  department?: string;
+  quantity?: number;
+  unitPrice?: number;
+  total?: number;
+  amount?: number;
 }
 
 interface InvoiceData {
   invoiceNo: string;
   date: string;
   dueDate: string;
-  status: 'paid' | 'pending' | 'partial';
+  status: 'paid' | 'pending' | 'partial' | 'auto-paid';
+  patientType?: 'ASF' | 'ASF_FAMILY' | 'CIVILIAN';
   patient: {
     name: string;
-    mrNo: string;
-    forceNo: string;
+    patientNo?: string;
+    mrNo?: string;
+    forceNo?: string;
     phone: string;
     address: string;
   };
@@ -33,8 +36,8 @@ interface InvoiceData {
   grandTotal: number;
   amountPaid: number;
   balance: number;
-  paymentMethod: string;
-  paymentRef: string;
+  paymentMethod?: string;
+  paymentRef?: string;
   createdBy: string;
 }
 
@@ -45,13 +48,190 @@ interface BillingInvoiceTemplateProps {
 const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data }) => {
   const printRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = () => {
-    window.print();
+  const handleThermalPrint = () => {
+    const printWindow = window.open('', '', 'width=400,height=700');
+    if (!printWindow) {
+      alert('Please disable your popup blocker to print invoices');
+      return;
+    }
+
+    // Build items HTML
+    let itemsHTML = '';
+    (data.items || []).forEach(item => {
+      const desc = item.description || item.name || 'Service';
+      const dept = item.department || '';
+      const qty = item.quantity || 1;
+      const total = item.total || item.amount || item.unitPrice || 0;
+      itemsHTML += '<div class="table-row">';
+      itemsHTML += '<div class="item-desc"><strong>' + desc + '</strong>';
+      itemsHTML += '<div class="item-dept">' + dept + '</div></div>';
+      itemsHTML += '<div class="item-qty">' + qty + '</div>';
+      itemsHTML += '<div class="item-amount">Rs. ' + total.toLocaleString() + '</div>';
+      itemsHTML += '</div>';
+    });
+
+    // Build optional rows
+    let dueDateHTML = '';
+    if (data.dueDate) {
+      dueDateHTML = '<div class="info-row"><span style="font-weight: bold;">Due:</span><span>' + data.dueDate + '</span></div>';
+    }
+
+    let discountHTML = '';
+    if (data.discount > 0) {
+      discountHTML = '<div class="totals-row"><span>Discount:</span><span>- Rs. ' + data.discount.toLocaleString() + '</span></div>';
+    }
+
+    let taxHTML = '';
+    if (data.tax > 0) {
+      taxHTML = '<div class="totals-row"><span>Tax:</span><span>Rs. ' + data.tax.toLocaleString() + '</span></div>';
+    }
+
+    let paidHTML = '';
+    if (data.amountPaid > 0) {
+      paidHTML = '<div class="totals-row"><span>PAID:</span><span>Rs. ' + data.amountPaid.toLocaleString() + '</span></div>';
+    }
+
+    let balanceHTML = '';
+    if (data.balance > 0) {
+      balanceHTML = '<div class="totals-row" style="font-weight: bold; color: #ff6b00;"><span>BALANCE DUE:</span><span>Rs. ' + data.balance.toLocaleString() + '</span></div>';
+    }
+
+    let paymentStatusHTML = '';
+    if (data.status === 'paid' || data.status === 'auto-paid') {
+      paymentStatusHTML = '<div class="payment-status paid">✓ PAYMENT RECEIVED';
+      if (data.paymentMethod) {
+        paymentStatusHTML += '<div style="font-size: 8px;">' + data.paymentMethod + '</div>';
+      }
+      if (data.paymentRef) {
+        paymentStatusHTML += '<div style="font-size: 7px;">Ref: ' + data.paymentRef + '</div>';
+      }
+      paymentStatusHTML += '</div>';
+    }
+
+    let patientInfoHTML = '';
+    if (data.patient.forceNo) {
+      patientInfoHTML += 'Force No: ' + data.patient.forceNo;
+    }
+    if (data.patient.mrNo) {
+      if (patientInfoHTML) patientInfoHTML += ' | ';
+      patientInfoHTML += 'MR: ' + data.patient.mrNo;
+    }
+
+    let patientTypeHTML = '';
+    if (data.patientType) {
+      patientTypeHTML = 'Type: ' + data.patientType;
+    }
+
+    const statusClass = (data.status === 'paid' || data.status === 'auto-paid') ? 'paid' : 'pending';
+    const statusText = data.status === 'auto-paid' ? 'AUTO-PAID (GOVT)' : data.status.toUpperCase();
+
+    const invoiceHTML = [
+      '<!DOCTYPE html>',
+      '<html>',
+      '<head>',
+      '<meta charset="UTF-8">',
+      '<title>Invoice ' + data.invoiceNo + '</title>',
+      '<style>',
+      '* { margin: 0; padding: 0; box-sizing: border-box; }',
+      '@media print { @page { size: 80mm auto; margin: 0; } body { width: 80mm; margin: 0; padding: 0; } }',
+      'body { font-family: "Courier New", monospace; font-size: 11px; line-height: 1.3; width: 80mm; margin: 0 auto; padding: 0; background: white; color: #000; }',
+      '.invoice-wrapper { width: 80mm; padding: 2mm; text-align: center; }',
+      '.header { margin-bottom: 2mm; border-bottom: 1px solid #000; padding-bottom: 1.5mm; }',
+      '.header h1 { font-size: 12px; font-weight: bold; margin: 0 0 1px 0; letter-spacing: 0.5px; }',
+      '.header p { font-size: 8px; margin: 0.5px 0; }',
+      '.invoice-no { margin: 1.5mm 0; font-weight: bold; }',
+      '.invoice-no .number { font-family: monospace; font-size: 12px; letter-spacing: 1px; margin: 1px 0; }',
+      '.status { font-size: 9px; font-weight: bold; margin: 0.5mm 0; }',
+      '.status.paid { color: #008000; }',
+      '.status.pending { color: #ff6b00; }',
+      '.separator { border-top: 1px solid #000; margin: 1mm 0; }',
+      '.section-title { font-weight: bold; font-size: 9px; text-align: left; margin: 1mm 0 0.8mm 0; letter-spacing: 0.5px; }',
+      '.info-block { text-align: left; font-size: 9px; margin-bottom: 1mm; }',
+      '.info-row { display: flex; justify-content: space-between; margin: 0.5px 0; }',
+      '.patient-details { text-align: left; font-size: 9px; border: 1px solid #000; padding: 1mm; margin-bottom: 1mm; }',
+      '.patient-name { font-weight: bold; font-size: 10px; margin-bottom: 0.5px; }',
+      '.patient-info { font-size: 8px; margin: 0.3px 0; }',
+      '.table-header { border-bottom: 1px solid #000; padding-bottom: 0.5mm; font-weight: bold; display: grid; grid-template-columns: 2fr 0.7fr 1fr; gap: 1mm; margin-bottom: 0.8mm; font-size: 8px; }',
+      '.table-row { display: grid; grid-template-columns: 2fr 0.7fr 1fr; gap: 1mm; margin: 0.6mm 0; padding-bottom: 0.5mm; border-bottom: 1px dotted #ccc; font-size: 8px; }',
+      '.item-desc { text-align: left; }',
+      '.item-dept { font-size: 7px; color: #666; margin-top: 0.2mm; }',
+      '.item-qty { text-align: center; }',
+      '.item-amount { text-align: right; font-weight: bold; }',
+      '.totals { margin: 1mm 0; font-size: 9px; }',
+      '.totals-row { display: flex; justify-content: space-between; margin: 0.5mm 0; padding: 0.3mm 0; }',
+      '.totals-row.grand { font-weight: bold; font-size: 10px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 0.8mm 0; margin: 1mm 0; }',
+      '.payment-status { text-align: center; margin: 1mm 0; font-weight: bold; font-size: 10px; }',
+      '.payment-status.paid { color: #008000; }',
+      '.footer { text-align: center; font-size: 8px; margin-top: 1.5mm; border-top: 1px solid #000; padding-top: 1mm; }',
+      '.footer p { margin: 0.5mm 0; }',
+      '</style>',
+      '</head>',
+      '<body>',
+      '<div class="invoice-wrapper">',
+      '<div class="header">',
+      '<h1>SMART HOSPITAL</h1>',
+      '<p>Healthcare Management System</p>',
+      '<p>Medical Center, Rawalpindi | Tel: 051-1234567</p>',
+      '</div>',
+      '<div class="invoice-no">',
+      '<div>BILL / INVOICE</div>',
+      '<div class="number">' + data.invoiceNo + '</div>',
+      '<div class="status ' + statusClass + '">' + statusText + '</div>',
+      '</div>',
+      '<div class="separator"></div>',
+      '<div class="info-block">',
+      '<div class="info-row"><span style="font-weight: bold;">Date:</span><span>' + data.date + '</span></div>',
+      dueDateHTML,
+      '</div>',
+      '<div class="separator"></div>',
+      '<p class="section-title">PATIENT DETAILS</p>',
+      '<div class="patient-details">',
+      '<div class="patient-name">' + data.patient.name + '</div>',
+      '<div class="patient-info">' + patientInfoHTML + '</div>',
+      '<div class="patient-info">' + patientTypeHTML + '</div>',
+      '<div class="patient-info">Ph: ' + data.patient.phone + '</div>',
+      '</div>',
+      '<div class="separator"></div>',
+      '<p class="section-title">SERVICES</p>',
+      '<div class="table-header">',
+      '<div>Description</div>',
+      '<div style="text-align: center;">Qty</div>',
+      '<div style="text-align: right;">Amount</div>',
+      '</div>',
+      itemsHTML,
+      '<div class="separator"></div>',
+      '<div class="totals">',
+      '<div class="totals-row"><span>Subtotal:</span><span>Rs. ' + data.subtotal.toLocaleString() + '</span></div>',
+      discountHTML,
+      taxHTML,
+      '<div class="totals-row grand"><span>TOTAL:</span><span>Rs. ' + data.grandTotal.toLocaleString() + '</span></div>',
+      paidHTML,
+      balanceHTML,
+      '</div>',
+      paymentStatusHTML,
+      '<div class="footer">',
+      '<p style="font-weight: bold;">Thank You!</p>',
+      '<p>For your visit to Smart Hospital</p>',
+      '<p style="margin: 0.8mm 0 0.3mm 0; font-size: 7px;">' + new Date().toLocaleString() + '</p>',
+      '<p style="font-size: 7px;">By: ' + data.createdBy + '</p>',
+      '</div>',
+      '</div>',
+      '</body>',
+      '</html>'
+    ].join('\n');
+
+    printWindow.document.write(invoiceHTML);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 250);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
+      case 'auto-paid':
         return 'bg-success text-success-foreground';
       case 'pending':
         return 'bg-warning text-warning-foreground';
@@ -62,181 +242,165 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
     }
   };
 
+  const getStatusText = (status: string) => {
+    if (status === 'auto-paid') return 'AUTO-PAID (Government)';
+    return status.toUpperCase();
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={handlePrint}>
+      <div className="flex justify-end gap-2">
+        <Button onClick={handleThermalPrint}>
           <Printer className="w-4 h-4 mr-2" />
-          Print
+          Print Invoice (Thermal)
         </Button>
         <Button variant="outline">
           <Download className="w-4 h-4 mr-2" />
-          Download PDF
+          Export PDF
         </Button>
       </div>
 
-      <Card className="max-w-4xl mx-auto print:shadow-none print:border-none">
+      <Card className="max-w-2xl mx-auto">
         <CardContent className="p-8" ref={printRef}>
-          {/* Header */}
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <img src={Logo} alt="Smart Hospital" className="w-16 h-16 rounded-lg" />
-              <div>
-                <h1 className="text-2xl font-bold text-primary">Smart Hospital</h1>
-                <p className="text-sm text-muted-foreground">Health Management System</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  123 Medical Center, Rawalpindi | Tel: 051-1234567
-                </p>
-              </div>
+          <div className="text-center mb-4">
+            <h1 className="text-xl font-bold text-primary">SMART HOSPITAL</h1>
+            <p className="text-xs text-muted-foreground">Healthcare Management System</p>
+            <p className="text-xs text-muted-foreground">Medical Center, Rawalpindi</p>
+            <p className="text-xs text-muted-foreground">Tel: 051-1234567</p>
+          </div>
+
+          <Separator className="my-3" />
+
+          <div className="text-center mb-4">
+            <p className="text-sm font-bold">BILL / INVOICE</p>
+            <p className="text-xs font-mono">{data.invoiceNo}</p>
+            <Badge className={getStatusColor(data.status) + ' text-xs mt-2'}>
+              {getStatusText(data.status)}
+            </Badge>
+          </div>
+
+          <Separator className="my-3" />
+
+          <div className="text-xs space-y-1 mb-4">
+            <div className="flex justify-between">
+              <span className="font-semibold">Date:</span>
+              <span>{data.date}</span>
             </div>
-            <div className="text-right">
-              <h2 className="text-2xl font-bold text-foreground">INVOICE</h2>
-              <p className="text-primary font-bold text-lg">{data.invoiceNo}</p>
-              <Badge className={getStatusColor(data.status)}>
-                {data.status.toUpperCase()}
-              </Badge>
+            {data.dueDate && (
+              <div className="flex justify-between">
+                <span className="font-semibold">Due:</span>
+                <span>{data.dueDate}</span>
+              </div>
+            )}
+          </div>
+
+          <Separator className="my-3" />
+
+          <div className="mb-4">
+            <p className="text-xs font-bold mb-2">PATIENT DETAILS</p>
+            <div className="text-xs space-y-1 bg-muted/30 p-3 rounded">
+              <p className="font-semibold">{data.patient.name}</p>
+              {data.patient.forceNo && (
+                <p>Force No: <span className="font-mono">{data.patient.forceNo}</span></p>
+              )}
+              {data.patient.mrNo && (
+                <p>MR No: <span className="font-mono">{data.patient.mrNo}</span></p>
+              )}
+              {data.patientType && (
+                <p>Type: <span className="font-semibold">{data.patientType}</span></p>
+              )}
+              <p>Ph: {data.patient.phone}</p>
             </div>
           </div>
 
-          <Separator className="my-4" />
+          <Separator className="my-3" />
 
-          {/* Invoice Details & Patient Info */}
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            <div>
-              <h3 className="font-semibold text-sm text-muted-foreground mb-2">BILL TO</h3>
-              <div className="bg-muted/30 p-4 rounded-lg space-y-1">
-                <p className="font-semibold text-lg">{data.patient.name}</p>
-                <p className="text-sm">MR No: <span className="font-medium">{data.patient.mrNo}</span></p>
-                <p className="text-sm">Force No: <span className="font-medium">{data.patient.forceNo}</span></p>
-                <p className="text-sm">Phone: {data.patient.phone}</p>
-                <p className="text-sm">{data.patient.address}</p>
+          <div className="mb-4">
+            <p className="text-xs font-bold mb-2">SERVICES</p>
+            <div className="text-xs space-y-1">
+              <div className="flex justify-between font-semibold border-b pb-1">
+                <span className="flex-1">Description</span>
+                <span className="w-12 text-right">Qty</span>
+                <span className="w-16 text-right">Amount</span>
               </div>
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm text-muted-foreground mb-2">INVOICE DETAILS</h3>
-              <div className="bg-muted/30 p-4 rounded-lg space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Invoice Date:</span>
-                  <span className="font-medium">{data.date}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Due Date:</span>
-                  <span className="font-medium">{data.dueDate}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Payment Method:</span>
-                  <span className="font-medium">{data.paymentMethod}</span>
-                </div>
-                {data.paymentRef && (
+              {(data.items || []).map((item, index) => (
+                <div key={index} className="space-y-0">
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Reference:</span>
-                    <span className="font-medium">{data.paymentRef}</span>
+                    <div className="flex-1">
+                      <p className="font-medium">{item.description || item.name || 'Service'}</p>
+                      <p className="text-xs text-muted-foreground">{item.department || ''}</p>
+                    </div>
+                    <span className="w-12 text-right">{item.quantity || 1}</span>
+                    <span className="w-16 text-right font-semibold">Rs. {(item.total || item.amount || item.unitPrice || 0).toLocaleString()}</span>
                   </div>
-                )}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Items Table */}
-          <div className="mb-6">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-primary/10">
-                  <th className="text-left py-3 px-4 text-sm font-semibold rounded-tl-lg">#</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold">Description</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold">Department</th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold">Qty</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold">Unit Price</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold rounded-tr-lg">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((item, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="py-3 px-4">{index + 1}</td>
-                    <td className="py-3 px-4 font-medium">{item.description}</td>
-                    <td className="py-3 px-4">
-                      <Badge variant="outline">{item.department}</Badge>
-                    </td>
-                    <td className="py-3 px-4 text-center">{item.quantity}</td>
-                    <td className="py-3 px-4 text-right">Rs. {item.unitPrice.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right font-medium">Rs. {item.total.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Separator className="my-3" />
 
-          {/* Totals */}
-          <div className="flex justify-end mb-6">
-            <div className="w-72 space-y-2">
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Subtotal:</span>
-                <span className="font-medium">Rs. {data.subtotal.toLocaleString()}</span>
-              </div>
-              {data.discount > 0 && (
-                <div className="flex justify-between py-2 text-success">
-                  <span>Discount:</span>
-                  <span className="font-medium">- Rs. {data.discount.toLocaleString()}</span>
-                </div>
-              )}
-              {data.tax > 0 && (
-                <div className="flex justify-between py-2">
-                  <span className="text-muted-foreground">Tax:</span>
-                  <span className="font-medium">Rs. {data.tax.toLocaleString()}</span>
-                </div>
-              )}
-              <Separator />
-              <div className="flex justify-between py-2 text-lg">
-                <span className="font-semibold">Grand Total:</span>
-                <span className="font-bold text-primary">Rs. {data.grandTotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between py-2 bg-success/10 px-3 rounded-lg">
-                <span className="text-success font-medium">Amount Paid:</span>
-                <span className="font-bold text-success">Rs. {data.amountPaid.toLocaleString()}</span>
-              </div>
-              {data.balance > 0 && (
-                <div className="flex justify-between py-2 bg-warning/10 px-3 rounded-lg">
-                  <span className="text-warning font-medium">Balance Due:</span>
-                  <span className="font-bold text-warning">Rs. {data.balance.toLocaleString()}</span>
-                </div>
-              )}
+          <div className="space-y-1 text-xs mb-4">
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span>Rs. {data.subtotal.toLocaleString()}</span>
             </div>
+            {data.discount > 0 && (
+              <div className="flex justify-between text-success">
+                <span>Discount:</span>
+                <span>- Rs. {data.discount.toLocaleString()}</span>
+              </div>
+            )}
+            {data.tax > 0 && (
+              <div className="flex justify-between">
+                <span>Tax:</span>
+                <span>Rs. {data.tax.toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold text-sm py-1 border-t border-double">
+              <span>Grand Total:</span>
+              <span className="text-primary">Rs. {data.grandTotal.toLocaleString()}</span>
+            </div>
+            {data.amountPaid > 0 && (
+              <div className="flex justify-between bg-success/10 px-2 py-1 rounded text-success font-semibold">
+                <span>Amount Paid:</span>
+                <span>Rs. {data.amountPaid.toLocaleString()}</span>
+              </div>
+            )}
+            {data.balance > 0 && (
+              <div className="flex justify-between bg-warning/10 px-2 py-1 rounded text-warning font-semibold">
+                <span>Balance Due:</span>
+                <span>Rs. {data.balance.toLocaleString()}</span>
+              </div>
+            )}
           </div>
 
-          {/* Payment Status Banner */}
-          {data.status === 'paid' && (
-            <div className="bg-success/10 border border-success/30 rounded-lg p-4 flex items-center justify-center gap-2 mb-6">
-              <CheckCircle className="w-6 h-6 text-success" />
-              <span className="text-success font-semibold text-lg">PAYMENT RECEIVED - THANK YOU</span>
+          <Separator className="my-3" />
+
+          {(data.status === 'paid' || data.status === 'auto-paid') && (
+            <div className="text-center bg-success/10 border border-success rounded p-2 mb-4">
+              <p className="text-xs font-semibold text-success flex items-center justify-center gap-1">
+                <CheckCircle className="w-4 h-4" />
+                {data.status === 'auto-paid' ? 'AUTO-PAID - GOVT HOSPITAL' : 'PAYMENT RECEIVED'}
+              </p>
             </div>
           )}
 
-          <Separator className="my-4" />
-
-          {/* Footer */}
-          <div className="flex justify-between items-end mt-6">
-            <div className="text-xs text-muted-foreground">
-              <p>This is a computer-generated invoice.</p>
-              <p>Created by: {data.createdBy}</p>
-              <p>Generated on: {new Date().toLocaleString()}</p>
+          {data.paymentMethod && (
+            <div className="text-xs text-center text-muted-foreground mb-4">
+              <p>Payment Method: {data.paymentMethod}</p>
+              {data.paymentRef && <p>Ref: {data.paymentRef}</p>}
             </div>
-            <div className="text-center">
-              <div className="w-48 border-t border-foreground pt-2">
-                <p className="font-semibold">Authorized Signature</p>
-                <p className="text-sm text-muted-foreground">Billing Department</p>
-              </div>
-            </div>
-          </div>
+          )}
 
-          {/* Terms */}
-          <div className="mt-6 p-4 bg-muted/30 rounded-lg">
-            <h4 className="font-semibold text-sm mb-2">Terms & Conditions:</h4>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• Payment is due within 30 days of invoice date.</li>
-              <li>• Please include invoice number on payment.</li>
-              <li>• For queries, contact billing department at 051-1234567.</li>
-            </ul>
+          <div className="text-center text-xs text-muted-foreground space-y-1 pt-2">
+            <p className="font-semibold">Thank You</p>
+            <p>For your visit to Smart Hospital</p>
+            <p className="text-xs">Generated: {new Date().toLocaleString()}</p>
+            <p className="text-xs">By: {data.createdBy}</p>
+            <p className="text-xs mt-2 border-t pt-2">
+              Keep this receipt for your records
+            </p>
           </div>
         </CardContent>
       </Card>

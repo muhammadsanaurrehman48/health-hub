@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Table,
   TableBody,
@@ -41,7 +40,6 @@ import {
   Send,
   Building,
   User,
-  AlertCircle,
 } from 'lucide-react';
 
 const mockReferrals = [
@@ -50,7 +48,7 @@ const mockReferrals = [
     referralNo: 'REF-2025-001',
     patientName: 'Muhammad Ali',
     forceNo: 'F-12345',
-    referredTo: 'Cardiology',
+    referredTo: 'NICVD Hospital Karachi',
     referredDoctor: 'Dr. Imran Shah',
     date: '2025-02-06',
     urgency: 'urgent' as const,
@@ -62,37 +60,38 @@ const mockReferrals = [
     referralNo: 'REF-2025-002',
     patientName: 'Fatima Begum',
     forceNo: 'F-12346',
-    referredTo: 'Orthopedics',
+    referredTo: 'SIUT Hospital Karachi',
     referredDoctor: 'Dr. Khalid Mehmood',
     date: '2025-02-05',
     urgency: 'routine' as const,
     status: 'accepted',
-    diagnosis: 'Chronic knee pain - OA',
+    diagnosis: 'Chronic kidney issues',
   },
   {
     id: '3',
     referralNo: 'REF-2025-003',
     patientName: 'Ahmed Khan',
     forceNo: 'F-12347',
-    referredTo: 'CMH Rawalpindi',
-    referredDoctor: '',
+    referredTo: 'CMH Malir Cantt, Karachi',
+    referredDoctor: 'Dr. Rashid Khan',
     date: '2025-02-04',
     urgency: 'emergency' as const,
     status: 'transferred',
-    diagnosis: 'Severe chest trauma - RTA',
+    diagnosis: 'Severe trauma - RTA',
   },
 ];
 
-const departments = [
-  'Cardiology', 'Orthopedics', 'Neurology', 'Gastroenterology', 
-  'Pulmonology', 'Nephrology', 'Oncology', 'Psychiatry',
-  'Dermatology', 'ENT', 'Ophthalmology', 'Gynecology',
-  'Urology', 'Pediatrics', 'General Surgery', 'ICU'
-];
-
-const externalHospitals = [
-  'CMH Rawalpindi', 'AFIC Rawalpindi', 'MH Rawalpindi', 
-  'PIMS Islamabad', 'Shifa International', 'Other'
+const karachiHospitals = [
+  'NICVD Hospital Karachi',
+  'CMH Malir Cantt, Karachi',
+  'MMI Hospital',
+  'SIUT Hospital Karachi',
+  'Kidney Centre Karachi',
+  'JPMC Karachi',
+  'SIAG Hospital Karachi',
+  'NICH Hospital Karachi',
+  'Dow University Olha Campus',
+  'Civil Hospital Karachi',
 ];
 
 const DoctorReferrals: React.FC = () => {
@@ -107,20 +106,12 @@ const DoctorReferrals: React.FC = () => {
   const [patientAge, setPatientAge] = useState('');
   const [patientGender, setPatientGender] = useState('');
   const [patientPhone, setPatientPhone] = useState('');
-  const [referralType, setReferralType] = useState<'internal' | 'external'>('internal');
-  const [department, setDepartment] = useState('');
-  const [referredDoctor, setReferredDoctor] = useState('');
   const [externalHospital, setExternalHospital] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [reasonForReferral, setReasonForReferral] = useState('');
-  const [clinicalHistory, setClinicalHistory] = useState('');
-  const [treatmentGiven, setTreatmentGiven] = useState('');
-  const [investigations, setInvestigations] = useState('');
-  const [urgency, setUrgency] = useState<'routine' | 'urgent' | 'emergency'>('routine');
-  const [notes, setNotes] = useState('');
 
   const handleCreateReferral = () => {
-    if (!forceNo || !patientName || !department || !diagnosis || !reasonForReferral) {
+    if (!patientName || !externalHospital || !diagnosis || !reasonForReferral) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -141,17 +132,9 @@ const DoctorReferrals: React.FC = () => {
     setPatientAge('');
     setPatientGender('');
     setPatientPhone('');
-    setReferralType('internal');
-    setDepartment('');
-    setReferredDoctor('');
     setExternalHospital('');
     setDiagnosis('');
     setReasonForReferral('');
-    setClinicalHistory('');
-    setTreatmentGiven('');
-    setInvestigations('');
-    setUrgency('routine');
-    setNotes('');
   };
 
   const handleViewReferral = (referral: typeof mockReferrals[0]) => {
@@ -197,15 +180,6 @@ const DoctorReferrals: React.FC = () => {
     return <Badge className={styles[status] || 'bg-muted'}>{status}</Badge>;
   };
 
-  const getUrgencyBadge = (urgency: string) => {
-    const styles: Record<string, string> = {
-      routine: 'bg-success/20 text-success border-success',
-      urgent: 'bg-warning/20 text-warning border-warning',
-      emergency: 'bg-destructive/20 text-destructive border-destructive',
-    };
-    return <Badge variant="outline" className={styles[urgency]}>{urgency}</Badge>;
-  };
-
   const filteredReferrals = mockReferrals.filter((ref) =>
     ref.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ref.forceNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -240,9 +214,9 @@ const DoctorReferrals: React.FC = () => {
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Force No *</Label>
+                      <Label>Force No (Optional)</Label>
                       <Input
-                        placeholder="Enter Force No"
+                        placeholder="Enter Force No if available"
                         value={forceNo}
                         onChange={(e) => setForceNo(e.target.value)}
                       />
@@ -287,82 +261,27 @@ const DoctorReferrals: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Referral Type */}
+                {/* Referral Destination */}
                 <div className="space-y-4">
                   <h3 className="font-semibold flex items-center gap-2">
                     <Building className="w-4 h-4" />
-                    Referral Destination
+                    Referred to Hospital
                   </h3>
-                  <RadioGroup
-                    value={referralType}
-                    onValueChange={(v) => setReferralType(v as 'internal' | 'external')}
-                    className="flex gap-6"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="internal" id="internal" />
-                      <Label htmlFor="internal">Internal Department</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="external" id="external" />
-                      <Label htmlFor="external">External Hospital</Label>
-                    </div>
-                  </RadioGroup>
 
                   <div className="grid grid-cols-2 gap-4">
-                    {referralType === 'internal' ? (
-                      <>
-                        <div className="space-y-2">
-                          <Label>Department *</Label>
-                          <Select value={department} onValueChange={setDepartment}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select department" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {departments.map((dept) => (
-                                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Referred Doctor (Optional)</Label>
-                          <Input
-                            placeholder="Doctor name"
-                            value={referredDoctor}
-                            onChange={(e) => setReferredDoctor(e.target.value)}
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="space-y-2">
-                          <Label>Hospital *</Label>
-                          <Select value={externalHospital} onValueChange={setExternalHospital}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select hospital" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {externalHospitals.map((hosp) => (
-                                <SelectItem key={hosp} value={hosp}>{hosp}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Department *</Label>
-                          <Select value={department} onValueChange={setDepartment}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select department" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {departments.map((dept) => (
-                                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </>
-                    )}
+                    <div className="space-y-2 col-span-2">
+                      <Label>Hospital *</Label>
+                      <Select value={externalHospital} onValueChange={setExternalHospital}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select hospital" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {karachiHospitals.map((hosp) => (
+                            <SelectItem key={hosp} value={hosp}>{hosp}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
 
@@ -370,11 +289,11 @@ const DoctorReferrals: React.FC = () => {
                 <div className="space-y-4">
                   <h3 className="font-semibold flex items-center gap-2">
                     <FileText className="w-4 h-4" />
-                    Clinical Information
+                    Referral Details
                   </h3>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Provisional Diagnosis *</Label>
+                      <Label>Diagnosis *</Label>
                       <Textarea
                         placeholder="Enter diagnosis"
                         value={diagnosis}
@@ -389,67 +308,7 @@ const DoctorReferrals: React.FC = () => {
                         onChange={(e) => setReasonForReferral(e.target.value)}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Clinical History</Label>
-                      <Textarea
-                        placeholder="Brief clinical history"
-                        value={clinicalHistory}
-                        onChange={(e) => setClinicalHistory(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Treatment Given</Label>
-                      <Textarea
-                        placeholder="Treatment provided so far"
-                        value={treatmentGiven}
-                        onChange={(e) => setTreatmentGiven(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Investigations Done (comma-separated)</Label>
-                      <Input
-                        placeholder="e.g., CBC, ECG, X-Ray Chest"
-                        value={investigations}
-                        onChange={(e) => setInvestigations(e.target.value)}
-                      />
-                    </div>
                   </div>
-                </div>
-
-                {/* Urgency */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" />
-                    Priority Level
-                  </h3>
-                  <RadioGroup
-                    value={urgency}
-                    onValueChange={(v) => setUrgency(v as 'routine' | 'urgent' | 'emergency')}
-                    className="flex gap-6"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="routine" id="routine" />
-                      <Label htmlFor="routine" className="text-success">Routine</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="urgent" id="urgent" />
-                      <Label htmlFor="urgent" className="text-warning">Urgent</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="emergency" id="emergency" />
-                      <Label htmlFor="emergency" className="text-destructive">Emergency</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {/* Notes */}
-                <div className="space-y-2">
-                  <Label>Additional Notes</Label>
-                  <Textarea
-                    placeholder="Any additional information"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
                 </div>
               </div>
               <DialogFooter>
@@ -491,7 +350,6 @@ const DoctorReferrals: React.FC = () => {
                   <TableHead>Referred To</TableHead>
                   <TableHead>Diagnosis</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -512,7 +370,6 @@ const DoctorReferrals: React.FC = () => {
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">{referral.diagnosis}</TableCell>
                     <TableCell>{referral.date}</TableCell>
-                    <TableCell>{getUrgencyBadge(referral.urgency)}</TableCell>
                     <TableCell>{getStatusBadge(referral.status)}</TableCell>
                     <TableCell>
                       <div className="flex justify-end">

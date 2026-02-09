@@ -13,6 +13,7 @@ import {
   Search,
   Ticket,
   Loader2,
+  FileText,
 } from 'lucide-react';
 
 const ReceptionistDashboard: React.FC = () => {
@@ -110,7 +111,7 @@ const ReceptionistDashboard: React.FC = () => {
         {/* Quick Actions */}
         <div>
           <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <QuickAction
               title="Register Patient"
               description="New registration"
@@ -140,6 +141,12 @@ const ReceptionistDashboard: React.FC = () => {
               description="Create invoice"
               icon={Receipt}
               to="/receptionist/billing"
+            />
+            <QuickAction
+              title="Print Documents"
+              description="Rx, Referrals, Tests"
+              icon={FileText}
+              to="/receptionist/documents"
             />
           </div>
         </div>
