@@ -169,9 +169,9 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
       '<body>',
       '<div class="invoice-wrapper">',
       '<div class="header">',
-      '<h1>SMART HOSPITAL</h1>',
+      '<h1>AFS MEDICAL</h1>',
       '<p>Healthcare Management System</p>',
-      '<p>Medical Center, Rawalpindi | Tel: 051-1234567</p>',
+      '<p>Karachi | Tel: 021-1234567</p>',
       '</div>',
       '<div class="invoice-no">',
       '<div>BILL / INVOICE</div>',
@@ -211,7 +211,7 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
       paymentStatusHTML,
       '<div class="footer">',
       '<p style="font-weight: bold;">Thank You!</p>',
-      '<p>For your visit to Smart Hospital</p>',
+      '<p>For your visit to AFS Medical</p>',
       '<p style="margin: 0.8mm 0 0.3mm 0; font-size: 7px;">' + new Date().toLocaleString() + '</p>',
       '<p style="font-size: 7px;">By: ' + data.createdBy + '</p>',
       '</div>',
@@ -263,10 +263,10 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
       <Card className="max-w-2xl mx-auto">
         <CardContent className="p-8" ref={printRef}>
           <div className="text-center mb-4">
-            <h1 className="text-xl font-bold text-primary">SMART HOSPITAL</h1>
+            <h1 className="text-xl font-bold text-primary">AFS MEDICAL</h1>
             <p className="text-xs text-muted-foreground">Healthcare Management System</p>
-            <p className="text-xs text-muted-foreground">Medical Center, Rawalpindi</p>
-            <p className="text-xs text-muted-foreground">Tel: 051-1234567</p>
+            <p className="text-xs text-muted-foreground">Karachi</p>
+            <p className="text-xs text-muted-foreground">Tel: 021-1234567</p>
           </div>
 
           <Separator className="my-3" />
@@ -395,7 +395,7 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
 
           <div className="text-center text-xs text-muted-foreground space-y-1 pt-2">
             <p className="font-semibold">Thank You</p>
-            <p>For your visit to Smart Hospital</p>
+            <p>For your visit to AFS Medical</p>
             <p className="text-xs">Generated: {new Date().toLocaleString()}</p>
             <p className="text-xs">By: {data.createdBy}</p>
             <p className="text-xs mt-2 border-t pt-2">

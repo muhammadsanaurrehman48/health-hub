@@ -1,6 +1,28 @@
-// API Configuration
+// API Configuration - Smart URL Detection
 const API_BASE_URL = typeof window !== 'undefined' 
-  ? (import.meta.env.VITE_API_URL || 'http://localhost:5000/api')
+  ? (() => {
+      const envUrl = import.meta.env.VITE_API_URL;
+      if (envUrl) {
+        console.log('📡 Using VITE_API_URL from environment:', envUrl);
+        return envUrl;
+      }
+      
+      // Auto-detect API URL based on current location
+      const hostname = window.location.hostname;
+      const protocol = window.location.protocol;
+      
+      // If accessing from network IP, use that IP for API too
+      if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        const apiUrl = `${protocol}//` + hostname + ':5000/api';
+        console.log('📡 Detecting network access, using API URL:', apiUrl);
+        return apiUrl;
+      }
+      
+      // Default to localhost
+      const defaultUrl = 'http://localhost:5000/api';
+      console.log('📡 Using default localhost API URL:', defaultUrl);
+      return defaultUrl;
+    })()
   : 'http://localhost:5000/api';
 
 class ApiClient {
@@ -100,6 +122,10 @@ class ApiClient {
     });
   }
 
+  async getDoctors() {
+    return this.request('/users/role/doctor');
+  }
+
   // Patient endpoints
   async getPatients() {
     return this.request('/patients');
@@ -187,6 +213,12 @@ class ApiClient {
     });
   }
 
+  async clearAllAppointments() {
+    return this.request('/appointments/admin/clear-all', {
+      method: 'DELETE',
+    });
+  }
+
   // Lab Request endpoints
   async getLabRequests() {
     return this.request('/lab-requests');
@@ -265,6 +297,13 @@ class ApiClient {
 
   async getAdmittedPatients() {
     return this.request('/nurse/patients');
+  }
+
+  async createAdmission(data) {
+    return this.request('/nurse/admit', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // Billing endpoints

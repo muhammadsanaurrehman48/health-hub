@@ -74,15 +74,29 @@ const QueueDisplay: React.FC = () => {
           return;
         }
 
+        console.log('🔄 [Queue Display] Fetching queue data for room:', roomNo);
         const response = await api.request(`/queue/room/${roomNo}`);
         if (response.success) {
+          console.log('✅ [Queue Display] Queue data received:', {
+            room: response.data.roomNo,
+            doctor: response.data.doctorName,
+            current: response.data.currentPatient?.patientName,
+            waiting: response.data.waitingPatients,
+            total: response.data.totalPatients,
+            patients: response.data.patients.map((p: any) => ({
+              token: p.tokenNo,
+              name: p.patientName,
+              status: p.status,
+            })),
+          });
           setQueueData(response.data);
           setError(null);
         } else {
+          console.error('❌ [Queue Display] Failed to fetch:', response.message);
           setError(response.message || 'Failed to fetch queue data');
         }
       } catch (error) {
-        console.error('Error fetching queue data:', error);
+        console.error('❌ [Queue Display] Error:', error);
         setError(error instanceof Error ? error.message : 'Failed to fetch queue data');
       } finally {
         setLoading(false);
@@ -91,8 +105,11 @@ const QueueDisplay: React.FC = () => {
 
     fetchQueueData();
 
-    // Refresh every 10 seconds
-    const refreshTimer = setInterval(fetchQueueData, 10000);
+    // Refresh every 3 seconds for real-time updates
+    const refreshTimer = setInterval(() => {
+      console.log('🔄 [Queue Display] Auto-refresh triggered for room:', roomNo);
+      fetchQueueData();
+    }, 3000);
     return () => clearInterval(refreshTimer);
   }, [roomNo]);
 
@@ -123,8 +140,22 @@ const QueueDisplay: React.FC = () => {
   }
 
   const currentPatient = queueData.currentPatient;
-  const nextPatient = queueData.patients[queueData.currentPatientIndex + 1];
-  const upcomingPatients = queueData.patients.slice(queueData.currentPatientIndex + 1, queueData.currentPatientIndex + 6);
+  
+  // Filter only WAITING patients for upcoming display (exclude completed/serving)
+  const waitingPatients = queueData.patients.filter(p => p.status === 'waiting');
+  
+  // Show next 5 waiting patients from the list
+  const upcomingPatients = waitingPatients.slice(0, 5);
+
+  console.log('📊 Queue Display Debug:', {
+    roomNo: queueData.roomNo,
+    currentPatientIndex: queueData.currentPatientIndex,
+    totalPatients: queueData.totalPatients,
+    waitingPatients: queueData.waitingPatients,
+    currentPatient: currentPatient?.patientName,
+    upcomingCount: upcomingPatients.length,
+    allPatientStatuses: queueData.patients.map(p => ({ name: p.patientName, status: p.status })),
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5 p-8">

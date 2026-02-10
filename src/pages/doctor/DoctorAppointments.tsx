@@ -88,15 +88,29 @@ const DoctorAppointments: React.FC = () => {
     const fetchQueueData = async () => {
       setLoading(true);
       try {
+        console.log('🔄 [Doctor] Fetching queue for room:', selectedRoom);
         const response = await api.request(`/queue/room/${selectedRoom}`);
         if (response.success) {
+          console.log('✅ [Doctor] Queue fetched:', {
+            room: response.data.roomNo,
+            doctor: response.data.doctorName,
+            total: response.data.totalPatients,
+            waiting: response.data.waitingPatients,
+            current: response.data.currentPatient?.patientName,
+            patients: response.data.patients.map((p: any) => ({ 
+              name: p.patientName, 
+              token: p.tokenNo, 
+              status: p.status 
+            })),
+          });
           setQueueData(response.data);
           setError(null);
         } else {
+          console.error('❌ [Doctor] Failed to fetch queue:', response.message);
           setError(response.message || 'Failed to load queue data');
         }
       } catch (err) {
-        console.error('Error fetching queue:', err);
+        console.error('❌ [Doctor] Error fetching queue:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch queue data');
       } finally {
         setLoading(false);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/sheet';
 import PrescriptionTemplate from '@/components/templates/PrescriptionTemplate';
 import { toast } from 'sonner';
+import api from '@/utils/api';
 import {
   Search,
   Eye,
@@ -44,61 +45,21 @@ import {
   CheckCircle,
   Plus,
   Trash2,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
-
-const mockPrescriptions = [
-  { id: '1', rxNo: 'RX-456789', patientName: 'Muhammad Ali', mrNo: 'MR-001234', date: '2025-02-01', diagnosis: 'Hypertension', medicines: 3, status: 'completed' },
-  { id: '2', rxNo: 'RX-456788', patientName: 'Fatima Begum', mrNo: 'MR-001235', date: '2025-02-01', diagnosis: 'Flu', medicines: 4, status: 'pending' },
-  { id: '3', rxNo: 'RX-456787', patientName: 'Ahmed Khan', mrNo: 'MR-001236', date: '2025-01-31', diagnosis: 'Back pain', medicines: 2, status: 'completed' },
-  { id: '4', rxNo: 'RX-456786', patientName: 'Sara Bibi', mrNo: 'MR-001237', date: '2025-01-31', diagnosis: 'Diabetes Type 2', medicines: 5, status: 'completed' },
-];
-
-const mockPatients = [
-  { mrNo: 'MR-001234', name: 'Muhammad Ali', forceNo: 'F-12345', age: 45, gender: 'Male', phone: '0300-1234567' },
-  { mrNo: 'MR-001235', name: 'Fatima Begum', forceNo: 'F-12346', age: 32, gender: 'Female', phone: '0301-2345678' },
-  { mrNo: 'MR-001236', name: 'Ahmed Khan', forceNo: 'F-12347', age: 28, gender: 'Male', phone: '0302-3456789' },
-];
-
-const samplePrescriptionData = {
-  prescriptionNo: 'RX-456789',
-  date: '2025-02-01',
-  patient: {
-    name: 'Muhammad Ali',
-    mrNo: 'MR-001234',
-    forceNo: 'F-12345',
-    age: 45,
-    gender: 'Male',
-    phone: '0300-1234567',
-  },
-  doctor: {
-    name: 'Dr. Ahmad Khan',
-    specialization: 'Cardiology',
-    qualification: 'MBBS, FCPS',
-    regNo: 'PMC-12345',
-  },
-  vitals: {
-    bloodPressure: '130/85',
-    pulse: '78 bpm',
-    temperature: '98.6°F',
-    weight: '75 kg',
-  },
-  diagnosis: 'Essential Hypertension',
-  medicines: [
-    { name: 'Amlodipine', dosage: '5mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take in the morning' },
-    { name: 'Atorvastatin', dosage: '10mg', frequency: 'Once daily at night', duration: '30 days', instructions: 'Take after dinner' },
-    { name: 'Aspirin', dosage: '75mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take after breakfast' },
-  ],
-  labTests: ['Complete Blood Count', 'Lipid Profile'],
-  radiologyTests: [],
-  notes: 'Low salt diet, regular exercise recommended. Monitor BP daily.',
-  followUpDate: '2025-03-01',
-};
 
 const DoctorPrescriptions: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isViewSheetOpen, setIsViewSheetOpen] = useState(false);
   const [selectedPrescription, setSelectedPrescription] = useState<any>(null);
+  
+  // Dynamic data states
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   
   // New prescription form state
   const [selectedPatient, setSelectedPatient] = useState('');
@@ -107,6 +68,57 @@ const DoctorPrescriptions: React.FC = () => {
     { name: '', dosage: '', frequency: '', duration: '', instructions: '' }
   ]);
   const [notes, setNotes] = useState('');
+
+  // Fetch data
+  const fetchData = useCallback(async (showRefresh = false) => {
+    try {
+      if (showRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      const [rxRes, patientsRes] = await Promise.all([
+        api.getPrescriptions().catch(() => ({ success: false, data: [] })),
+        api.getPatients().catch(() => ({ success: false, data: [] })),
+      ]);
+
+      if (rxRes.success && rxRes.data) {
+        const rxList = (Array.isArray(rxRes.data) ? rxRes.data : []).map((rx: any) => ({
+          id: rx._id || rx.id,
+          rxNo: rx.prescriptionNo || rx.rxNo || `RX-${String(rx._id).slice(-6)}`,
+          patientName: rx.patient?.name || rx.patientName || 'Unknown',
+          mrNo: rx.patient?.mrNo || rx.mrNo || '',
+          date: rx.date ? new Date(rx.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          diagnosis: rx.diagnosis || 'N/A',
+          medicines: rx.medicines?.length || 0,
+          status: rx.status || 'pending',
+          fullData: rx,
+        }));
+        setPrescriptions(rxList);
+      }
+
+      if (patientsRes.success && patientsRes.data) {
+        const patientList = (Array.isArray(patientsRes.data) ? patientsRes.data : []).map((p: any) => ({
+          id: p._id || p.id,
+          mrNo: p.mrNo || p.patientNo || `MR-${String(p._id).slice(-6)}`,
+          name: p.name || 'Unknown',
+          forceNo: p.forceNo || '',
+          age: p.age || 0,
+          gender: p.gender || 'Unknown',
+          phone: p.phone || '',
+        }));
+        setPatients(patientList);
+      }
+    } catch (error) {
+      console.error('Error fetching prescriptions:', error);
+      toast.error('Failed to load prescriptions');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -141,29 +153,106 @@ const DoctorPrescriptions: React.FC = () => {
     setMedicines(updated);
   };
 
-  const handleCreatePrescription = () => {
+  const handleCreatePrescription = async () => {
     if (!selectedPatient || !diagnosis || medicines.some(m => !m.name)) {
       toast.error('Please fill in required fields');
       return;
     }
-    toast.success('Prescription created successfully!');
-    setIsAddDialogOpen(false);
-    setSelectedPatient('');
-    setDiagnosis('');
-    setMedicines([{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }]);
-    setNotes('');
+    try {
+      const patient = patients.find(p => p.mrNo === selectedPatient);
+      const prescriptionData = {
+        patientId: patient?.id,
+        patientName: patient?.name,
+        mrNo: selectedPatient,
+        diagnosis,
+        medicines: medicines.filter(m => m.name),
+        notes,
+        date: new Date().toISOString(),
+        status: 'pending',
+      };
+      
+      await api.createPrescription(prescriptionData);
+      toast.success('Prescription created successfully!');
+      setIsAddDialogOpen(false);
+      setSelectedPatient('');
+      setDiagnosis('');
+      setMedicines([{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }]);
+      setNotes('');
+      fetchData(true); // Refresh list
+    } catch (error) {
+      console.error('Error creating prescription:', error);
+      toast.error('Failed to create prescription');
+    }
   };
 
-  const handleViewPrescription = (rx: any) => {
-    setSelectedPrescription(rx);
-    setIsViewSheetOpen(true);
+  const handleViewPrescription = async (rx: any) => {
+    try {
+      // Try to get full prescription data
+      if (rx.id) {
+        const response = await api.getPrescription(rx.id).catch(() => null);
+        if (response?.success && response.data) {
+          const fullRx = response.data;
+          const patient = patients.find(p => p.mrNo === fullRx.mrNo || p.id === fullRx.patientId);
+          setSelectedPrescription({
+            prescriptionNo: fullRx.prescriptionNo || fullRx.rxNo || rx.rxNo,
+            date: fullRx.date ? new Date(fullRx.date).toISOString().split('T')[0] : rx.date,
+            patient: {
+              name: fullRx.patient?.name || fullRx.patientName || patient?.name || rx.patientName,
+              mrNo: fullRx.patient?.mrNo || fullRx.mrNo || patient?.mrNo || rx.mrNo,
+              forceNo: fullRx.patient?.forceNo || patient?.forceNo || '',
+              age: fullRx.patient?.age || patient?.age || 0,
+              gender: fullRx.patient?.gender || patient?.gender || 'Unknown',
+              phone: fullRx.patient?.phone || patient?.phone || '',
+            },
+            doctor: fullRx.doctor || {
+              name: 'Doctor',
+              specialization: 'General',
+              qualification: 'MBBS',
+              regNo: 'PMC-00000',
+            },
+            vitals: fullRx.vitals || {},
+            diagnosis: fullRx.diagnosis || rx.diagnosis,
+            medicines: fullRx.medicines || [],
+            labTests: fullRx.labTests || [],
+            radiologyTests: fullRx.radiologyTests || [],
+            notes: fullRx.notes || '',
+            followUpDate: fullRx.followUpDate || '',
+          });
+          setIsViewSheetOpen(true);
+          return;
+        }
+      }
+      // Fallback to basic data
+      setSelectedPrescription({
+        prescriptionNo: rx.rxNo,
+        date: rx.date,
+        patient: { name: rx.patientName, mrNo: rx.mrNo },
+        diagnosis: rx.diagnosis,
+        medicines: [],
+        notes: '',
+      });
+      setIsViewSheetOpen(true);
+    } catch (error) {
+      console.error('Error fetching prescription details:', error);
+      toast.error('Failed to load prescription details');
+    }
   };
 
-  const filteredPrescriptions = mockPrescriptions.filter((rx) =>
-    rx.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    rx.mrNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    rx.rxNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredPrescriptions = prescriptions.filter((rx) =>
+    rx.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    rx.mrNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    rx.rxNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="doctor">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="doctor">
@@ -173,10 +262,16 @@ const DoctorPrescriptions: React.FC = () => {
             <h2 className="text-2xl font-bold text-foreground">My Prescriptions</h2>
             <p className="text-muted-foreground">View and manage prescriptions you've written</p>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Prescription
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Prescription
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -209,16 +304,23 @@ const DoctorPrescriptions: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPrescriptions.map((rx) => (
-                  <TableRow key={rx.id}>
-                    <TableCell className="font-bold text-primary">{rx.rxNo}</TableCell>
-                    <TableCell>{rx.date}</TableCell>
-                    <TableCell className="font-medium">{rx.patientName}</TableCell>
-                    <TableCell>{rx.mrNo}</TableCell>
-                    <TableCell>{rx.diagnosis}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{rx.medicines} items</Badge>
+                {filteredPrescriptions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      No prescriptions found
                     </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPrescriptions.map((rx) => (
+                    <TableRow key={rx.id}>
+                      <TableCell className="font-bold text-primary">{rx.rxNo}</TableCell>
+                      <TableCell>{rx.date}</TableCell>
+                      <TableCell className="font-medium">{rx.patientName}</TableCell>
+                      <TableCell>{rx.mrNo}</TableCell>
+                      <TableCell>{rx.diagnosis}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{rx.medicines} items</Badge>
+                      </TableCell>
                     <TableCell>{getStatusBadge(rx.status)}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
@@ -231,7 +333,8 @@ const DoctorPrescriptions: React.FC = () => {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -253,11 +356,15 @@ const DoctorPrescriptions: React.FC = () => {
                       <SelectValue placeholder="Search patient by MR No" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockPatients.map((p) => (
-                        <SelectItem key={p.mrNo} value={p.mrNo}>
-                          {p.name} - {p.mrNo}
-                        </SelectItem>
-                      ))}
+                      {patients.length === 0 ? (
+                        <SelectItem value="" disabled>No patients found</SelectItem>
+                      ) : (
+                        patients.map((p) => (
+                          <SelectItem key={p.mrNo || p.id} value={p.mrNo}>
+                            {p.name} - {p.mrNo}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -364,7 +471,7 @@ const DoctorPrescriptions: React.FC = () => {
               <SheetTitle>Prescription Details</SheetTitle>
             </SheetHeader>
             <div className="mt-6">
-              <PrescriptionTemplate data={samplePrescriptionData} />
+              {selectedPrescription && <PrescriptionTemplate data={selectedPrescription} />}
             </div>
           </SheetContent>
         </Sheet>

@@ -6,7 +6,7 @@
 interface TokenData {
   tokenNo: string;
   patientName: string;
-  forceNo: string;
+  mrNo?: string;
   department: string;
   doctor: string;
   date: string;
@@ -67,9 +67,9 @@ interface TokenData {
            </style>
          </head>
          <body>
-           <div class="center bold medium">SMART HOSPITAL</div>
+           <div class="center bold medium">ASF MEDICAL</div>
            <div class="center small">Health Management System</div>
-           <div class="center small">123 Medical Center, Rawalpindi</div>
+           <div class="center small">Karachi | Tel: 021-1234567</div>
            <div class="divider"></div>
            
            <div class="token-box">
@@ -83,10 +83,7 @@ interface TokenData {
               <span>Patient:</span>
               <span class="bold">${data.patientName}</span>
             </div>
-            <div class="row">
-              <span>Force No:</span>
-              <span>${data.forceNo}</span>
-            </div>
+            ${data.mrNo ? '<div class="row"><span>MR No:</span><span>' + data.mrNo + '</span></div>' : ''}
            <div class="row">
              <span>Department:</span>
              <span>${data.department}</span>
@@ -145,9 +142,9 @@ interface TokenData {
        >
          {/* Header */}
          <div className="text-center">
-           <p className="font-bold text-base">SMART HOSPITAL</p>
+           <p className="font-bold text-base">ASF MEDICAL</p>
           <p className="text-xs text-muted-foreground">Health Management System</p>
-          <p className="text-xs text-muted-foreground">123 Medical Center, Rawalpindi</p>
+          <p className="text-xs text-muted-foreground">Karachi | Tel: 021-1234567</p>
          </div>
  
          <Separator className="my-3 border-dashed" />
@@ -166,10 +163,12 @@ interface TokenData {
               <span>Patient:</span>
               <span className="font-bold">{data.patientName}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Force No:</span>
-              <span>{data.forceNo}</span>
-            </div>
+            {data.mrNo && (
+              <div className="flex justify-between">
+                <span>MR No:</span>
+                <span>{data.mrNo}</span>
+              </div>
+            )}
            <div className="flex justify-between">
              <span>Department:</span>
              <span>{data.department}</span>

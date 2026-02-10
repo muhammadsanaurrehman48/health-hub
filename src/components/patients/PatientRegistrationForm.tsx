@@ -126,6 +126,8 @@ const PatientRegistrationForm: React.FC = () => {
         toast.success('Patient registered successfully!', {
           description: `${response.data.patientNo} - ${firstName} ${lastName}`,
         });
+        // Set flag to trigger immediate refresh in PatientSearch
+        sessionStorage.setItem('refreshPatients', 'true');
         navigate('/receptionist/patients/search');
       } else {
         toast.error(response.message || 'Failed to register patient');

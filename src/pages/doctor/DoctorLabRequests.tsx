@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { toast } from 'sonner';
+import api from '@/utils/api';
 import {
   Search,
   Eye,
@@ -44,20 +45,10 @@ import {
   FlaskConical,
   FileText,
   Plus,
+  Loader2,
+  RefreshCw,
+  Printer,
 } from 'lucide-react';
-
-const mockLabRequests = [
-  { id: '1', requestNo: 'LAB-2025-0123', patientName: 'Muhammad Ali', mrNo: 'MR-001234', test: 'Complete Blood Count', requestDate: '2025-02-01', status: 'completed', result: 'Normal' },
-  { id: '2', requestNo: 'LAB-2025-0122', patientName: 'Fatima Begum', mrNo: 'MR-001235', test: 'Blood Sugar Fasting', requestDate: '2025-02-01', status: 'pending', result: '-' },
-  { id: '3', requestNo: 'LAB-2025-0121', patientName: 'Ahmed Khan', mrNo: 'MR-001236', test: 'Lipid Profile', requestDate: '2025-01-31', status: 'completed', result: 'Elevated LDL' },
-  { id: '4', requestNo: 'LAB-2025-0120', patientName: 'Sara Bibi', mrNo: 'MR-001237', test: 'HbA1c', requestDate: '2025-01-31', status: 'in-progress', result: '-' },
-];
-
-const mockPatients = [
-  { mrNo: 'MR-001234', name: 'Muhammad Ali' },
-  { mrNo: 'MR-001235', name: 'Fatima Begum' },
-  { mrNo: 'MR-001236', name: 'Ahmed Khan' },
-];
 
 const availableTests = [
   'Complete Blood Count',
@@ -72,33 +63,68 @@ const availableTests = [
   'Serum Electrolytes',
 ];
 
-const sampleLabReport = {
-  requestNo: 'LAB-2025-0121',
-  patientName: 'Ahmed Khan',
-  mrNo: 'MR-001236',
-  test: 'Lipid Profile',
-  requestDate: '2025-01-31',
-  reportDate: '2025-01-31',
-  results: [
-    { parameter: 'Total Cholesterol', value: '220', unit: 'mg/dL', reference: '<200', status: 'high' },
-    { parameter: 'LDL Cholesterol', value: '150', unit: 'mg/dL', reference: '<100', status: 'high' },
-    { parameter: 'HDL Cholesterol', value: '45', unit: 'mg/dL', reference: '>40', status: 'normal' },
-    { parameter: 'Triglycerides', value: '180', unit: 'mg/dL', reference: '<150', status: 'high' },
-  ],
-  remarks: 'Elevated LDL and total cholesterol. Lifestyle modifications and statin therapy recommended.',
-  technician: 'Lab Tech Ahmad',
-  pathologist: 'Dr. Fatima Naz',
-};
-
 const DoctorLabRequests: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [isReportSheetOpen, setIsReportSheetOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   
+  // Dynamic data states
+  const [labRequests, setLabRequests] = useState<any[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  
   // Request form state
   const [selectedPatient, setSelectedPatient] = useState('');
   const [selectedTests, setSelectedTests] = useState<string[]>([]);
+
+  // Fetch data
+  const fetchData = useCallback(async (showRefresh = false) => {
+    try {
+      if (showRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      const [labRes, patientsRes] = await Promise.all([
+        api.getLabRequests().catch(() => ({ success: false, data: [] })),
+        api.getPatients().catch(() => ({ success: false, data: [] })),
+      ]);
+
+      if (labRes.success && labRes.data) {
+        const requests = (Array.isArray(labRes.data) ? labRes.data : []).map((req: any) => ({
+          id: req._id || req.id,
+          requestNo: req.requestNo || `LAB-${new Date().getFullYear()}-${String(req._id).slice(-4)}`,
+          patientName: req.patient?.name || req.patientName || 'Unknown',
+          mrNo: req.patient?.mrNo || req.mrNo || '',
+          test: req.testName || req.test || 'Lab Test',
+          requestDate: req.requestDate ? new Date(req.requestDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          status: req.status || 'pending',
+          result: req.result || req.summary || '-',
+          fullData: req,
+        }));
+        setLabRequests(requests);
+      }
+
+      if (patientsRes.success && patientsRes.data) {
+        const patientList = (Array.isArray(patientsRes.data) ? patientsRes.data : []).map((p: any) => ({
+          id: p._id || p.id,
+          mrNo: p.mrNo || p.patientNo || `MR-${String(p._id).slice(-6)}`,
+          name: p.name || 'Unknown',
+        }));
+        setPatients(patientList);
+      }
+    } catch (error) {
+      console.error('Error fetching lab requests:', error);
+      toast.error('Failed to load lab requests');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -113,35 +139,161 @@ const DoctorLabRequests: React.FC = () => {
     }
   };
 
+  const handleRefresh = () => fetchData(true);
+
   const handleToggleTest = (test: string) => {
     setSelectedTests(prev =>
       prev.includes(test) ? prev.filter(t => t !== test) : [...prev, test]
     );
   };
 
-  const handleRequestTests = () => {
+  const handleRequestTests = async () => {
     if (!selectedPatient || selectedTests.length === 0) {
       toast.error('Please select patient and at least one test');
       return;
     }
-    toast.success(`${selectedTests.length} lab test(s) requested successfully!`);
-    setIsRequestDialogOpen(false);
-    setSelectedPatient('');
-    setSelectedTests([]);
-  };
-
-  const handleViewReport = (req: any) => {
-    if (req.status === 'completed') {
-      setSelectedReport(sampleLabReport);
-      setIsReportSheetOpen(true);
+    try {
+      const patient = patients.find(p => p.mrNo === selectedPatient);
+      for (const test of selectedTests) {
+        await api.createLabRequest({
+          patientId: patient?.id,
+          patientName: patient?.name,
+          mrNo: selectedPatient,
+          testName: test,
+          requestDate: new Date().toISOString(),
+          status: 'pending',
+        });
+      }
+      toast.success(`${selectedTests.length} lab test(s) requested successfully!`);
+      setIsRequestDialogOpen(false);
+      setSelectedPatient('');
+      setSelectedTests([]);
+      fetchData(true); // Refresh list
+    } catch (error) {
+      console.error('Error requesting tests:', error);
+      toast.error('Failed to request tests');
     }
   };
 
-  const filteredRequests = mockLabRequests.filter((req) =>
-    req.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.mrNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.requestNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleViewReport = async (req: any) => {
+    if (req.status === 'completed') {
+      try {
+        const response = await api.getLabRequest(req.id).catch(() => null);
+        if (response?.success && response.data) {
+          const report = response.data;
+          setSelectedReport({
+            requestNo: report.requestNo || req.requestNo,
+            patientName: report.patient?.name || report.patientName || req.patientName,
+            mrNo: report.patient?.mrNo || report.mrNo || req.mrNo,
+            test: report.testName || report.test || req.test,
+            requestDate: report.requestDate ? new Date(report.requestDate).toISOString().split('T')[0] : req.requestDate,
+            reportDate: report.reportDate ? new Date(report.reportDate).toISOString().split('T')[0] : req.requestDate,
+            results: report.results || [],
+            remarks: report.remarks || 'No remarks',
+            technician: report.technician || 'Lab Technician',
+            pathologist: report.pathologist || 'Pathologist',
+          });
+        } else {
+          setSelectedReport({
+            requestNo: req.requestNo,
+            patientName: req.patientName,
+            mrNo: req.mrNo,
+            test: req.test,
+            requestDate: req.requestDate,
+            reportDate: req.requestDate,
+            results: [],
+            remarks: req.result || 'View full report',
+            technician: 'Lab Technician',
+            pathologist: 'Pathologist',
+          });
+        }
+        setIsReportSheetOpen(true);
+      } catch (error) {
+        console.error('Error fetching report:', error);
+        toast.error('Failed to load report');
+      }
+    }
+  };
+
+  const handlePrintReport = () => {
+    if (!selectedReport) return;
+    
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) {
+      toast.error('Please allow popups to print');
+      return;
+    }
+    
+    let resultsHTML = '';
+    if (selectedReport.results && selectedReport.results.length > 0) {
+      resultsHTML = '<table style="width:100%; border-collapse:collapse; margin: 16px 0;"><thead><tr style="background:#f0f0f0;">';
+      resultsHTML += '<th style="border:1px solid #ddd; padding:8px;">Parameter</th>';
+      resultsHTML += '<th style="border:1px solid #ddd; padding:8px;">Value</th>';
+      resultsHTML += '<th style="border:1px solid #ddd; padding:8px;">Unit</th>';
+      resultsHTML += '<th style="border:1px solid #ddd; padding:8px;">Reference</th>';
+      resultsHTML += '<th style="border:1px solid #ddd; padding:8px;">Status</th>';
+      resultsHTML += '</tr></thead><tbody>';
+      selectedReport.results.forEach((r: any) => {
+        const statusColor = r.status === 'normal' ? '#22c55e' : '#f59e0b';
+        resultsHTML += '<tr>';
+        resultsHTML += '<td style="border:1px solid #ddd; padding:8px; font-weight:500;">' + r.parameter + '</td>';
+        resultsHTML += '<td style="border:1px solid #ddd; padding:8px;">' + r.value + '</td>';
+        resultsHTML += '<td style="border:1px solid #ddd; padding:8px;">' + r.unit + '</td>';
+        resultsHTML += '<td style="border:1px solid #ddd; padding:8px;">' + r.reference + '</td>';
+        resultsHTML += '<td style="border:1px solid #ddd; padding:8px; color:' + statusColor + '; font-weight:bold;">' + r.status + '</td>';
+        resultsHTML += '</tr>';
+      });
+      resultsHTML += '</tbody></table>';
+    }
+    
+    const html = [
+      '<!DOCTYPE html><html><head><title>Lab Report - ' + selectedReport.requestNo + '</title>',
+      '<style>body{font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:0 auto;}',
+      '.header{text-align:center;border-bottom:2px solid #333;padding-bottom:16px;margin-bottom:16px;}',
+      '.header h1{margin:0;color:#0066cc;}.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;padding:16px;background:#f9f9f9;border-radius:8px;}',
+      '.info-item{}.info-label{color:#666;font-size:12px;}.info-value{font-weight:500;}',
+      '.remarks{padding:16px;background:#fff3cd;border-radius:8px;margin:16px 0;}',
+      '.footer{display:flex;justify-content:space-between;margin-top:24px;padding-top:16px;border-top:1px solid #ddd;font-size:12px;color:#666;}',
+      '@media print{body{padding:0;}}</style></head><body>',
+      '<div class="header"><h1>SMART HOSPITAL</h1><p>Laboratory Report</p></div>',
+      '<div class="info-grid">',
+      '<div class="info-item"><div class="info-label">Patient</div><div class="info-value">' + selectedReport.patientName + '</div></div>',
+      '<div class="info-item"><div class="info-label">MR No</div><div class="info-value">' + selectedReport.mrNo + '</div></div>',
+      '<div class="info-item"><div class="info-label">Test</div><div class="info-value">' + selectedReport.test + '</div></div>',
+      '<div class="info-item"><div class="info-label">Report Date</div><div class="info-value">' + selectedReport.reportDate + '</div></div>',
+      '</div>',
+      '<h3>Results</h3>' + resultsHTML,
+      '<div class="remarks"><strong>Remarks:</strong> ' + selectedReport.remarks + '</div>',
+      '<div class="footer"><span>Technician: ' + selectedReport.technician + '</span><span>Pathologist: ' + selectedReport.pathologist + '</span></div>',
+      '</body></html>'
+    ].join('');
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 250);
+  };
+
+  const filteredRequests = labRequests.filter((req) =>
+    req.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    req.mrNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    req.requestNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const pendingRequests = filteredRequests.filter(r => r.status === 'pending' || r.status === 'in-progress');
+  const completedRequests = filteredRequests.filter(r => r.status === 'completed');
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="doctor">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="doctor">
@@ -151,10 +303,16 @@ const DoctorLabRequests: React.FC = () => {
             <h2 className="text-2xl font-bold text-foreground">Lab Test Requests</h2>
             <p className="text-muted-foreground">View status of laboratory tests you've requested</p>
           </div>
-          <Button onClick={() => setIsRequestDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Request Tests
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button onClick={() => setIsRequestDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Request Tests
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="all" className="space-y-4">
@@ -195,33 +353,41 @@ const DoctorLabRequests: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRequests.map((req) => (
-                      <TableRow key={req.id}>
-                        <TableCell className="font-bold text-primary">{req.requestNo}</TableCell>
-                        <TableCell className="font-medium">{req.patientName}</TableCell>
-                        <TableCell>{req.mrNo}</TableCell>
-                        <TableCell>{req.test}</TableCell>
-                        <TableCell>{req.requestDate}</TableCell>
-                        <TableCell>{getStatusBadge(req.status)}</TableCell>
-                        <TableCell>
-                          {req.result !== '-' ? (
-                            <span className={req.result === 'Normal' ? 'text-success' : 'text-warning'}>
-                              {req.result}
-                            </span>
-                          ) : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-2">
-                            {req.status === 'completed' && (
-                              <Button variant="outline" size="sm" onClick={() => handleViewReport(req)}>
-                                <FileText className="w-4 h-4 mr-1" />
-                                View Report
-                              </Button>
-                            )}
-                          </div>
+                    {filteredRequests.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No lab requests found
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      filteredRequests.map((req) => (
+                        <TableRow key={req.id}>
+                          <TableCell className="font-bold text-primary">{req.requestNo}</TableCell>
+                          <TableCell className="font-medium">{req.patientName}</TableCell>
+                          <TableCell>{req.mrNo}</TableCell>
+                          <TableCell>{req.test}</TableCell>
+                          <TableCell>{req.requestDate}</TableCell>
+                          <TableCell>{getStatusBadge(req.status)}</TableCell>
+                          <TableCell>
+                            {req.result !== '-' ? (
+                              <span className={req.result === 'Normal' ? 'text-success' : 'text-warning'}>
+                                {req.result}
+                              </span>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-2">
+                              {req.status === 'completed' && (
+                                <Button variant="outline" size="sm" onClick={() => handleViewReport(req)}>
+                                  <FileText className="w-4 h-4 mr-1" />
+                                  View Report
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -231,7 +397,32 @@ const DoctorLabRequests: React.FC = () => {
           <TabsContent value="pending">
             <Card>
               <CardContent className="pt-6">
-                <p className="text-center text-muted-foreground py-8">Pending requests will appear here</p>
+                {pendingRequests.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No pending requests</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Request No</TableHead>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Test</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingRequests.map((req) => (
+                        <TableRow key={req.id}>
+                          <TableCell className="font-bold text-primary">{req.requestNo}</TableCell>
+                          <TableCell>{req.patientName}</TableCell>
+                          <TableCell>{req.test}</TableCell>
+                          <TableCell>{req.requestDate}</TableCell>
+                          <TableCell>{getStatusBadge(req.status)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -239,7 +430,41 @@ const DoctorLabRequests: React.FC = () => {
           <TabsContent value="completed">
             <Card>
               <CardContent className="pt-6">
-                <p className="text-center text-muted-foreground py-8">Completed requests will appear here</p>
+                {completedRequests.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No completed requests</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Request No</TableHead>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Test</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Result</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {completedRequests.map((req) => (
+                        <TableRow key={req.id}>
+                          <TableCell className="font-bold text-primary">{req.requestNo}</TableCell>
+                          <TableCell>{req.patientName}</TableCell>
+                          <TableCell>{req.test}</TableCell>
+                          <TableCell>{req.requestDate}</TableCell>
+                          <TableCell>{req.result}</TableCell>
+                          <TableCell>
+                            <div className="flex justify-end">
+                              <Button variant="outline" size="sm" onClick={() => handleViewReport(req)}>
+                                <FileText className="w-4 h-4 mr-1" />
+                                View
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -259,11 +484,15 @@ const DoctorLabRequests: React.FC = () => {
                     <SelectValue placeholder="Search patient by MR No" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockPatients.map((p) => (
-                      <SelectItem key={p.mrNo} value={p.mrNo}>
-                        {p.name} - {p.mrNo}
-                      </SelectItem>
-                    ))}
+                    {patients.length === 0 ? (
+                      <SelectItem value="" disabled>No patients found</SelectItem>
+                    ) : (
+                      patients.map((p) => (
+                        <SelectItem key={p.mrNo || p.id} value={p.mrNo}>
+                          {p.name} - {p.mrNo}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -370,8 +599,8 @@ const DoctorLabRequests: React.FC = () => {
                   <p>Pathologist: {selectedReport.pathologist}</p>
                 </div>
 
-                <Button className="w-full" variant="outline">
-                  <FileText className="w-4 h-4 mr-2" />
+                <Button className="w-full" variant="outline" onClick={handlePrintReport}>
+                  <Printer className="w-4 h-4 mr-2" />
                   Print Report
                 </Button>
               </div>

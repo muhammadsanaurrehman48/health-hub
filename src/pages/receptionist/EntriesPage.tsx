@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +32,7 @@ import {
 import TokenTemplate from '@/components/templates/TokenTemplate';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import api from '@/utils/api';
 import {
   Ticket,
   Plus,
@@ -40,18 +41,9 @@ import {
   Clock,
   BedDouble,
   Eye,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
-
-const mockOPDTokens = [
-  { id: '1', tokenNo: 'OPD-045', patientName: 'Muhammad Ali', forceNo: 'F-12345', department: 'Cardiology', doctor: 'Dr. Ahmad Khan', time: '10:15 AM', status: 'waiting' },
-  { id: '2', tokenNo: 'OPD-046', patientName: 'Fatima Begum', forceNo: 'F-12346', department: 'Pediatrics', doctor: 'Dr. Sara Ali', time: '10:20 AM', status: 'in-progress' },
-  { id: '3', tokenNo: 'OPD-047', patientName: 'Ahmed Khan', forceNo: 'F-12347', department: 'Orthopedics', doctor: 'Dr. Usman Malik', time: '10:30 AM', status: 'completed' },
-];
-
-const mockIPDEntries = [
-  { id: '1', admissionNo: 'IPD-2025-001', patientName: 'Sara Bibi', forceNo: 'F-12348', ward: 'General Ward A', bed: 'A-12', doctor: 'Dr. Ahmad Khan', admitDate: '2025-01-28', status: 'admitted' },
-  { id: '2', admissionNo: 'IPD-2025-002', patientName: 'Usman Ali', forceNo: 'F-12349', ward: 'ICU', bed: 'ICU-3', doctor: 'Dr. Fatima Bibi', admitDate: '2025-01-30', status: 'critical' },
-];
 
 const EntriesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,37 +51,315 @@ const EntriesPage: React.FC = () => {
   const [isIPDDialogOpen, setIsIPDDialogOpen] = useState(false);
   const [isTokenSheetOpen, setIsTokenSheetOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState<any>(null);
+  
+  // Dynamic data states
+  const [opdTokens, setOpdTokens] = useState<any[]>([]);
+  const [ipdEntries, setIpdEntries] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Token form
-  const [tokenForceNo, setTokenForceNo] = useState('');
+  const [tokenPatientName, setTokenPatientName] = useState('');
+  const [tokenMrNo, setTokenMrNo] = useState('');
   const [tokenDepartment, setTokenDepartment] = useState('');
   const [tokenDoctor, setTokenDoctor] = useState('');
 
   // IPD form
-  const [ipdForceNo, setIpdForceNo] = useState('');
+  const [ipdPatientName, setIpdPatientName] = useState('');
+  const [ipdMrNo, setIpdMrNo] = useState('');
   const [ipdWard, setIpdWard] = useState('');
   const [ipdBed, setIpdBed] = useState('');
   const [ipdDoctor, setIpdDoctor] = useState('');
 
-  const handleGenerateToken = () => {
-    toast.success('OPD Token generated successfully!', {
-      description: 'Token No: OPD-048',
-    });
-    setIsTokenDialogOpen(false);
+  // Fetch data
+  const fetchData = useCallback(async (showRefresh = false) => {
+    try {
+      if (showRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      const [queueRes, admittedRes, patientsRes, appointmentsRes, doctorsRes] = await Promise.all([
+        api.getAllQueues().catch(() => ({ success: false, data: [] })),
+        api.getAdmittedPatients().catch(() => ({ success: false, data: [] })),
+        api.getPatients().catch(() => ({ success: false, data: [] })),
+        api.getAppointments?.() ? api.getAppointments().catch(() => ({ success: false, data: [] })) : Promise.resolve({ success: false, data: [] }),
+        api.getDoctors().catch(() => ({ success: false, data: [] })),
+      ]);
+
+      // Transform queue data to OPD tokens
+      let tokens: any[] = [];
+      
+      // First, get tokens from queues
+      if (queueRes.success && queueRes.data) {
+        tokens = (Array.isArray(queueRes.data) ? queueRes.data : []).flatMap((queue: any) => 
+          (queue.patients || []).map((p: any, idx: number) => ({
+            id: p._id || `${queue._id}-${idx}`,
+            tokenNo: p.tokenNumber || `OPD-${String(idx + 1).padStart(3, '0')}`,
+            patientName: p.patientName || p.name || 'Unknown',
+            mrNo: p.mrNo || p.patientNo || '',
+            department: queue.department?.name || queue.departmentName || 'General',
+            doctor: queue.doctor?.name || queue.doctorName || 'Assigned Doctor',
+            time: p.arrivalTime ? format(new Date(p.arrivalTime), 'hh:mm a') : format(new Date(), 'hh:mm a'),
+            status: p.status || 'waiting',
+          }))
+        );
+      }
+
+      // Also add appointments that are scheduled for today
+      if (appointmentsRes.success && appointmentsRes.data) {
+        const today = new Date().toISOString().split('T')[0];
+        const appointmentTokens = (Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [])
+          .filter((apt: any) => apt.date === today && apt.status === 'scheduled')
+          .map((apt: any) => ({
+            id: apt.id || apt._id,
+            tokenNo: apt.appointmentNo || `APT-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+            patientName: apt.patient || apt.patientName || 'Unknown',
+            mrNo: apt.patientNo || '',
+            department: apt.department || 'OPD',
+            doctor: apt.doctor || apt.doctorName || 'Assigned Doctor',
+            time: apt.time || format(new Date(), 'hh:mm a'),
+            status: apt.status || 'scheduled',
+            isAppointment: true,
+          }));
+        // Merge with queue tokens, avoiding duplicates
+        const appointmentIds = new Set(appointmentTokens.map(t => t.id));
+        tokens = [...appointmentTokens, ...tokens.filter(t => !appointmentIds.has(t.id))];
+      }
+
+      setOpdTokens(tokens);
+
+      // Set IPD entries
+      if (admittedRes.success && admittedRes.data) {
+        const entries = (Array.isArray(admittedRes.data) ? admittedRes.data : []).map((p: any) => ({
+          id: p._id || p.id,
+          admissionNo: p.admissionNo || `IPD-${new Date().getFullYear()}-${String(Math.random() * 1000).slice(0, 3)}`,
+          patientName: p.name || p.patientName || 'Unknown',
+          mrNo: p.mrNo || p.patientNo || '',
+          ward: p.ward || 'General Ward',
+          bed: p.bed || 'Unassigned',
+          doctor: p.doctor?.name || p.doctorName || 'Assigned Doctor',
+          admitDate: p.admitDate ? format(new Date(p.admitDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+          status: p.status || 'admitted',
+        }));
+        setIpdEntries(entries);
+      }
+
+      // Extract unique departments from queue data
+      if (queueRes.success && queueRes.data) {
+        const uniqueDepts: any = {};
+        (Array.isArray(queueRes.data) ? queueRes.data : []).forEach((queue: any) => {
+          if (queue.department?.name || queue.departmentName) {
+            const deptName = queue.department?.name || queue.departmentName;
+            uniqueDepts[deptName] = true;
+          }
+        });
+        setDepartments(Object.keys(uniqueDepts).map(d => ({ name: d })));
+      }
+
+      // Set doctors from dedicated endpoint
+      if (doctorsRes.success && doctorsRes.data) {
+        const doctorsList = Array.isArray(doctorsRes.data) ? doctorsRes.data : [];
+        const formattedDoctors = doctorsList.map((doc: any) => ({
+          id: doc.id || doc._id,
+          name: doc.name || (doc.firstName && doc.lastName ? `${doc.firstName} ${doc.lastName}` : 'Unknown'),
+          department: doc.department || 'OPD',
+        }));
+        setDoctors(formattedDoctors);
+        console.log('✅ [FRONTEND] Doctors loaded for IPD selection:', formattedDoctors.length, 'doctors');
+      } else {
+        console.warn('⚠️ [FRONTEND] Failed to load doctors from endpoint');
+        setDoctors([]);
+      }
+
+      // Set patients from fetched list
+      if (patientsRes.success && patientsRes.data) {
+        const patientList = (Array.isArray(patientsRes.data) ? patientsRes.data : []).map((p: any) => ({
+          id: p._id || p.id,
+          name: p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name || 'Unknown',
+          mrNo: p.mrNo || p.patientNo || '',
+        }));
+        setPatients(patientList);
+      }
+
+    } catch (error) {
+      console.error('Error fetching entries:', error);
+      toast.error('Failed to load entries');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Fetch immediately on mount
+    fetchData();
+
+    // Check if we were just redirected from patient registration
+    if (sessionStorage.getItem('refreshPatients') === 'true') {
+      sessionStorage.removeItem('refreshPatients');
+      // Refetch to ensure new patient is visible in the dropdown
+      setTimeout(() => fetchData(true), 500);
+    }
+
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchData(true), 30000);
+
+    // Refetch when page becomes visible (returns from another page)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchData]);
+
+  const handleRefresh = () => fetchData(true);
+
+  const handleGenerateToken = async () => {
+    if (!tokenPatientName) {
+      toast.error('Patient name is required');
+      return;
+    }
+    if (!tokenDoctor) {
+      toast.error('Doctor is required');
+      return;
+    }
+    if (!tokenDepartment) {
+      toast.error('Department is required');
+      return;
+    }
+    try {
+      // Find patient ID from patients list
+      const selectedPatient = patients.find(p => p.name === tokenPatientName);
+      if (!selectedPatient) {
+        toast.error('Patient not found');
+        return;
+      }
+
+      // Find doctor ID from doctors list
+      const selectedDoctor = doctors.find(d => d.name === tokenDoctor);
+      if (!selectedDoctor) {
+        toast.error('Doctor not found');
+        return;
+      }
+
+      // Create appointment with required fields
+      const appointmentData = {
+        patientId: selectedPatient.id,
+        doctorId: selectedDoctor.id,
+        roomNo: 'OPD-1', // Default room
+        date: new Date().toISOString().split('T')[0],
+        time: format(new Date(), 'HH:mm'),
+        reason: 'OPD Consultation',
+      };
+      
+      const response = await api.createAppointment(appointmentData);
+      
+      if (response?.success) {
+        toast.success('OPD Token generated successfully!');
+        setIsTokenDialogOpen(false);
+        setTokenPatientName('');
+        setTokenMrNo('');
+        setTokenDepartment('');
+        setTokenDoctor('');
+        
+        // Refresh the list from database to get official data
+        setTimeout(() => fetchData(true), 500);
+      } else {
+        toast.error('Failed to generate OPD token', {
+          description: response?.message || 'Unknown error',
+        });
+      }
+    } catch (error) {
+      console.error('Error generating token:', error);
+      toast.error('Failed to generate token', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   };
 
-  const handleAdmitPatient = () => {
-    toast.success('Patient admitted successfully!', {
-      description: 'Admission No: IPD-2025-003',
-    });
-    setIsIPDDialogOpen(false);
+  const handleAdmitPatient = async () => {
+    if (!ipdPatientName) {
+      toast.error('Patient name is required');
+      return;
+    }
+    if (!ipdWard) {
+      toast.error('Ward is required');
+      return;
+    }
+    if (!ipdBed) {
+      toast.error('Bed number is required');
+      return;
+    }
+    try {
+      // Find patient ID from patients list
+      const selectedPatient = patients.find(p => p.name === ipdPatientName);
+      if (!selectedPatient) {
+        toast.error('Patient not found');
+        console.error('❌ [FRONTEND] Patient not found. Available patients:', patients.map(p => p.name));
+        return;
+      }
+
+      // Find doctor ID from doctors list if available
+      const selectedDoctor = ipdDoctor ? doctors.find(d => d.name === ipdDoctor || d.id === ipdDoctor) : null;
+
+      // Create admission with required fields
+      const admissionData = {
+        patientId: selectedPatient.id,
+        name: ipdPatientName,
+        mrNo: selectedPatient.mrNo,
+        patientNo: selectedPatient.mrNo, // Send both for compatibility
+        ward: ipdWard,
+        bed: ipdBed,
+        doctor: selectedDoctor?.name || 'Assigned Doctor',
+        ...(selectedDoctor && { doctorId: selectedDoctor.id }),
+      };
+      
+      console.log('📝 [FRONTEND] Creating admission with data:', admissionData);
+      console.log('👤 [FRONTEND] Selected patient object:', selectedPatient);
+      
+      const response = await api.createAdmission(admissionData);
+      
+      console.log('📤 [FRONTEND] Admission response:', response);
+      
+      if (response?.success) {
+        toast.success('Patient admitted successfully!');
+        setIsIPDDialogOpen(false);
+        setIpdPatientName('');
+        setIpdMrNo('');
+        setIpdWard('');
+        setIpdBed('');
+        setIpdDoctor('');
+        
+        // Refresh the list immediately
+        console.log('🔄 [FRONTEND] Refreshing admissions list...');
+        setTimeout(() => fetchData(true), 500);
+      } else {
+        toast.error('Failed to admit patient', {
+          description: response?.message || 'Unknown error',
+        });
+        console.error('❌ [FRONTEND] Admission failed:', response?.message);
+      }
+    } catch (error) {
+      console.error('❌ [FRONTEND] Error admitting patient:', error);
+      toast.error('Failed to admit patient', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   };
 
-  const handleViewToken = (token: typeof mockOPDTokens[0]) => {
+  const handleViewToken = (token: any) => {
     setSelectedToken({
       tokenNo: token.tokenNo,
       patientName: token.patientName,
-      forceNo: token.forceNo,
+      mrNo: token.mrNo,
       department: token.department,
       doctor: token.doctor,
       date: format(new Date(), 'dd/MM/yyyy'),
@@ -111,6 +381,29 @@ const EntriesPage: React.FC = () => {
     return <Badge className={styles[status] || 'bg-muted'}>{status}</Badge>;
   };
 
+  // Filter tokens based on search
+  const filteredOpdTokens = opdTokens.filter((t) =>
+    t.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.mrNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.tokenNo?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredIpdEntries = ipdEntries.filter((e) =>
+    e.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.mrNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.admissionNo?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="receptionist">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout requiredRole="receptionist">
       <div className="space-y-6">
@@ -119,6 +412,10 @@ const EntriesPage: React.FC = () => {
             <h2 className="text-2xl font-bold text-foreground">OPD / IPD Entries</h2>
             <p className="text-muted-foreground">Manage patient tokens and admissions</p>
           </div>
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
 
         <Tabs defaultValue="opd" className="space-y-6">
@@ -158,11 +455,30 @@ const EntriesPage: React.FC = () => {
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label>Patient Force No</Label>
+                      <Label>Patient Name <span className="text-destructive">*</span></Label>
+                      <Select value={tokenPatientName} onValueChange={setTokenPatientName}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select patient" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {patients.length > 0 ? (
+                            patients.map((patient: any) => (
+                              <SelectItem key={patient.id} value={patient.name}>
+                                {patient.name} ({patient.mrNo})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>No patients registered</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>MR No / Force No <span className="text-muted-foreground text-xs">(Optional)</span></Label>
                       <Input
-                        placeholder="Enter Force No"
-                        value={tokenForceNo}
-                        onChange={(e) => setTokenForceNo(e.target.value)}
+                        placeholder="Enter MR No or Force No if available"
+                        value={tokenMrNo}
+                        onChange={(e) => setTokenMrNo(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -172,22 +488,38 @@ const EntriesPage: React.FC = () => {
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
                         <SelectContent>
-                          {['Cardiology', 'Pediatrics', 'Orthopedics', 'Gynecology', 'General', 'ENT', 'Dermatology'].map((d) => (
-                            <SelectItem key={d} value={d}>{d}</SelectItem>
-                          ))}
+                          {departments.length > 0 ? (
+                            departments.map((d: any) => (
+                              <SelectItem key={d._id || d.id || d.name} value={d.name}>{d.name}</SelectItem>
+                            ))
+                          ) : (
+                            ['Cardiology', 'Pediatrics', 'Orthopedics', 'Gynecology', 'General', 'ENT', 'Dermatology'].map((d) => (
+                              <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Doctor</Label>
+                      <Label>Doctor <span className="text-destructive">*</span></Label>
                       <Select value={tokenDoctor} onValueChange={setTokenDoctor}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select doctor" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="dr-ahmad">Dr. Ahmad Khan</SelectItem>
-                          <SelectItem value="dr-sara">Dr. Sara Ali</SelectItem>
-                          <SelectItem value="dr-usman">Dr. Usman Malik</SelectItem>
+                          {doctors.length > 0 ? (
+                            doctors.map((doc: any) => (
+                              <SelectItem key={doc.id || doc.name} value={doc.name || doc.id}>
+                                {doc.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <>
+                              <SelectItem value="Dr. Ahmad Khan">Dr. Ahmad Khan</SelectItem>
+                              <SelectItem value="Dr. Sara Ali">Dr. Sara Ali</SelectItem>
+                              <SelectItem value="Dr. Usman Malik">Dr. Usman Malik</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -215,7 +547,7 @@ const EntriesPage: React.FC = () => {
                     <TableRow>
                       <TableHead>Token No</TableHead>
                       <TableHead>Patient</TableHead>
-                      <TableHead>Force No</TableHead>
+                      <TableHead>MR No</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Doctor</TableHead>
                       <TableHead>Time</TableHead>
@@ -224,32 +556,40 @@ const EntriesPage: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockOPDTokens.map((token) => (
-                      <TableRow key={token.id}>
-                        <TableCell className="font-bold text-primary">{token.tokenNo}</TableCell>
-                        <TableCell className="font-medium">{token.patientName}</TableCell>
-                        <TableCell>{token.forceNo}</TableCell>
-                        <TableCell>{token.department}</TableCell>
-                        <TableCell>{token.doctor}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {token.time}
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(token.status)}</TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => handleViewToken(token)}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleViewToken(token)}>
-                              <Printer className="w-4 h-4" />
-                            </Button>
-                          </div>
+                    {filteredOpdTokens.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No OPD tokens found for today
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      filteredOpdTokens.map((token) => (
+                        <TableRow key={token.id}>
+                          <TableCell className="font-bold text-primary">{token.tokenNo}</TableCell>
+                          <TableCell className="font-medium">{token.patientName}</TableCell>
+                          <TableCell>{token.mrNo || '-'}</TableCell>
+                          <TableCell>{token.department}</TableCell>
+                          <TableCell>{token.doctor}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {token.time}
+                            </div>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(token.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => handleViewToken(token)}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleViewToken(token)}>
+                                <Printer className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -264,6 +604,8 @@ const EntriesPage: React.FC = () => {
                 <Input
                   placeholder="Search admissions"
                   className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               <Dialog open={isIPDDialogOpen} onOpenChange={setIsIPDDialogOpen}>
@@ -279,11 +621,31 @@ const EntriesPage: React.FC = () => {
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label>Patient Force No</Label>
+                      <Label>Patient Name <span className="text-destructive">*</span></Label>
+                      <Select value={ipdPatientName} onValueChange={setIpdPatientName}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select patient" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {patients.length > 0 ? (
+                            patients.map((patient: any) => (
+                              <SelectItem key={patient.id} value={patient.name}>
+                                {patient.name} ({patient.mrNo})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>No patients registered</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>MR No / Force No <span className="text-muted-foreground text-xs">(Auto-filled)</span></Label>
                       <Input
-                        placeholder="Enter Force No"
-                        value={ipdForceNo}
-                        onChange={(e) => setIpdForceNo(e.target.value)}
+                        placeholder="Auto-filled from selected patient"
+                        value={ipdMrNo}
+                        disabled
+                        className="bg-muted"
                       />
                     </div>
                     <div className="space-y-2">
@@ -314,8 +676,18 @@ const EntriesPage: React.FC = () => {
                           <SelectValue placeholder="Select doctor" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="dr-ahmad">Dr. Ahmad Khan</SelectItem>
-                          <SelectItem value="dr-fatima">Dr. Fatima Bibi</SelectItem>
+                          {doctors.length > 0 ? (
+                            doctors.map((doc: any) => (
+                              <SelectItem key={doc._id || doc.id} value={doc._id || doc.id}>
+                                {doc.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <>
+                              <SelectItem value="dr-ahmad">Dr. Ahmad Khan</SelectItem>
+                              <SelectItem value="dr-fatima">Dr. Fatima Bibi</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -343,7 +715,7 @@ const EntriesPage: React.FC = () => {
                     <TableRow>
                       <TableHead>Admission No</TableHead>
                       <TableHead>Patient</TableHead>
-                      <TableHead>Force No</TableHead>
+                      <TableHead>MR No</TableHead>
                       <TableHead>Ward</TableHead>
                       <TableHead>Bed</TableHead>
                       <TableHead>Doctor</TableHead>
@@ -352,20 +724,28 @@ const EntriesPage: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockIPDEntries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="font-bold text-primary">{entry.admissionNo}</TableCell>
-                        <TableCell className="font-medium">{entry.patientName}</TableCell>
-                        <TableCell>{entry.forceNo}</TableCell>
-                        <TableCell>{entry.ward}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{entry.bed}</Badge>
+                    {filteredIpdEntries.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No IPD admissions found
                         </TableCell>
-                        <TableCell>{entry.doctor}</TableCell>
-                        <TableCell>{entry.admitDate}</TableCell>
-                        <TableCell>{getStatusBadge(entry.status)}</TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      filteredIpdEntries.map((entry) => (
+                        <TableRow key={entry.id}>
+                          <TableCell className="font-bold text-primary">{entry.admissionNo}</TableCell>
+                          <TableCell className="font-medium">{entry.patientName}</TableCell>
+                          <TableCell>{entry.mrNo || '-'}</TableCell>
+                          <TableCell>{entry.ward}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{entry.bed}</Badge>
+                          </TableCell>
+                          <TableCell>{entry.doctor}</TableCell>
+                          <TableCell>{entry.admitDate}</TableCell>
+                          <TableCell>{getStatusBadge(entry.status)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
