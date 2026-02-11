@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import api from '@/utils/api';
 import {
   Search,
   Plus,
@@ -29,19 +30,31 @@ import {
   AlertTriangle,
   Package,
   Boxes,
+  Loader2,
 } from 'lucide-react';
-
-const mockInventory = [
-  { id: '1', name: 'Paracetamol 500mg', category: 'Tablets', stock: 1500, minStock: 500, unit: 'tablets', expiry: '2026-06-15', batchNo: 'PCM-2025-001' },
-  { id: '2', name: 'Amoxicillin 500mg', category: 'Capsules', stock: 120, minStock: 200, unit: 'capsules', expiry: '2025-12-20', batchNo: 'AMX-2024-045' },
-  { id: '3', name: 'Omeprazole 20mg', category: 'Capsules', stock: 800, minStock: 300, unit: 'capsules', expiry: '2026-03-10', batchNo: 'OMP-2025-012' },
-  { id: '4', name: 'Metformin 500mg', category: 'Tablets', stock: 50, minStock: 100, unit: 'tablets', expiry: '2025-08-25', batchNo: 'MTF-2024-089' },
-  { id: '5', name: 'Normal Saline 500ml', category: 'IV Fluids', stock: 200, minStock: 50, unit: 'bags', expiry: '2026-01-30', batchNo: 'NS-2025-033' },
-];
 
 const PharmacyInventory: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await api.getPharmacyInventory();
+        if (response.success) {
+          setInventory(response.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching pharmacy inventory:', error);
+        toast.error('Failed to load inventory');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, []);
 
   const getStockStatus = (stock: number, minStock: number) => {
     if (stock <= 0) return <Badge variant="destructive">Out of Stock</Badge>;
@@ -49,10 +62,20 @@ const PharmacyInventory: React.FC = () => {
     return <Badge className="bg-success text-success-foreground">In Stock</Badge>;
   };
 
-  const filteredInventory = mockInventory.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.batchNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredInventory = inventory.filter((item) =>
+    item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.batchNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="pharmacy">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="pharmacy">
@@ -116,7 +139,7 @@ const PharmacyInventory: React.FC = () => {
               <AlertTriangle className="w-5 h-5 text-warning" />
               <span className="font-medium">Low Stock Alert:</span>
               <span className="text-muted-foreground">
-                {mockInventory.filter(i => i.stock < i.minStock).length} items below minimum stock level
+                {inventory.filter(i => i.stock < i.minStock).length} items below minimum stock level
               </span>
             </div>
           </CardContent>

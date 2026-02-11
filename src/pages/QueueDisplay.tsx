@@ -249,7 +249,7 @@ const QueueDisplay: React.FC = () => {
             </div>
             
             {upcomingPatients.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+              <div className="space-y-3">
                 {upcomingPatients.map((patient, index) => {
                   const actualPosition = index + 1;
                   const isNext = actualPosition === 1;
@@ -257,31 +257,33 @@ const QueueDisplay: React.FC = () => {
                   return (
                     <div
                       key={patient.tokenNo}
-                      className={`flex gap-4 p-5 rounded-xl border-2 transition-all ${
+                      className={`flex gap-4 p-6 rounded-xl border-2 transition-all transform hover:scale-105 ${
                         isNext
-                          ? 'bg-yellow-50 border-yellow-400 shadow-md'
-                          : 'bg-muted/50 border-transparent'
+                          ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-400 shadow-lg scale-105'
+                          : 'bg-muted/50 border-transparent hover:bg-muted/70'
                       }`}
                     >
-                      <div className={`w-16 h-full flex items-center justify-center text-2xl font-bold rounded-lg flex-shrink-0 ${
+                      <div className={`w-20 h-20 flex items-center justify-center text-3xl font-bold rounded-lg flex-shrink-0 ${
                         isNext
-                          ? 'bg-yellow-400 text-yellow-900'
+                          ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white shadow-lg'
                           : 'bg-primary/20 text-primary'
                       }`}>
                         {actualPosition}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-2xl font-bold text-primary break-words">{patient.tokenNo}</p>
-                        <p className="text-lg font-semibold text-foreground truncate">{patient.patientName}</p>
-                        <p className="text-sm text-muted-foreground">{patient.patientNo}</p>
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <p className="text-3xl font-bold text-primary mb-1 break-words">{patient.tokenNo}</p>
+                        <p className="text-xl font-semibold text-foreground truncate">{patient.patientName}</p>
+                        <p className="text-base text-muted-foreground">{patient.patientNo}</p>
                         {patient.forceNo && (
-                          <p className="text-xs text-muted-foreground">Force: {patient.forceNo}</p>
+                          <p className="text-sm text-muted-foreground">Force: {patient.forceNo}</p>
                         )}
                       </div>
                       {isNext && (
-                        <Badge className="bg-yellow-500 text-yellow-900 text-sm font-semibold h-fit">
-                          NEXT
-                        </Badge>
+                        <div className="flex items-center">
+                          <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-lg px-4 py-2 font-bold h-fit animate-pulse">
+                            NEXT
+                          </Badge>
+                        </div>
                       )}
                     </div>
                   );

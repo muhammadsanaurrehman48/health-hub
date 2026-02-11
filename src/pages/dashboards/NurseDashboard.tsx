@@ -164,7 +164,7 @@ const NurseDashboard: React.FC = () => {
           </div>
         </div>
 
-        <RecentActivity title="Recent Activity" activities={mockActivities} />
+        <RecentActivity title="Recent Activity" activities={activities} />
       </div>
     </DashboardLayout>
   );

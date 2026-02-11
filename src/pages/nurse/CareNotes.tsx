@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,34 +19,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Plus, FileText, Clock, User } from 'lucide-react';
+import { Search, Plus, FileText, Clock, User, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '@/utils/api';
 
-const patients = [
-  { id: '1', mrNo: 'MR-001234', name: 'Muhammad Ali', ward: 'Ward A', bed: 'A-12', condition: 'stable' },
-  { id: '2', mrNo: 'MR-001235', name: 'Fatima Begum', ward: 'Ward B', bed: 'B-05', condition: 'improving' },
-  { id: '3', mrNo: 'MR-001236', name: 'Ahmed Khan', ward: 'ICU', bed: 'ICU-02', condition: 'critical' },
-  { id: '4', mrNo: 'MR-001237', name: 'Sara Hassan', ward: 'Ward A', bed: 'A-08', condition: 'stable' },
-];
-
-const existingNotes = [
-  { id: '1', time: '10:30 AM', nurse: 'Nurse Ayesha', type: 'Observation', note: 'Patient resting comfortably. Vitals stable. IV drip running at prescribed rate.' },
-  { id: '2', time: '08:00 AM', nurse: 'Nurse Fatima', type: 'Morning Round', note: 'Patient had a good night. Breakfast consumed 80%. No complaints of pain.' },
-  { id: '3', time: '06:00 AM', nurse: 'Nurse Sara', type: 'Vitals', note: 'Morning vitals recorded. BP slightly elevated, informed duty doctor.' },
-];
-
-const noteTypes = ['Observation', 'Vitals', 'Medication', 'Procedure', 'Incident', 'Discharge Planning', 'Other'];
+// Standard note types
+const NOTE_TYPES = ['Observation', 'Vitals', 'Medication', 'Procedure', 'Incident', 'Discharge Planning', 'Other'];
 
 const CareNotes: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<typeof patients[0] | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false);
   const [noteType, setNoteType] = useState('');
   const [noteContent, setNoteContent] = useState('');
+  const [patients, setPatients] = useState<any[]>([]);
+  const [careNotes, setCareNotes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  const fetchPatients = async () => {
+    try {
+      const response = await api.getAdmittedPatients();
+      if (response.success) {
+        setPatients(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+      toast.error('Failed to fetch patients');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredPatients = patients.filter(patient =>
-    patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.mrNo.toLowerCase().includes(searchTerm.toLowerCase())
+    (patient.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (patient.mrNo?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleAddNote = () => {
@@ -107,14 +117,9 @@ const CareNotes: React.FC = () => {
                 >
                   <div className="flex items-center justify-between">
                     <p className="font-medium">{patient.name}</p>
-                    <span className={`text-[10px] ${
-                      selectedPatient?.id === patient.id ? 'bg-primary-foreground/20' : getConditionBadge(patient.condition)
-                    } px-2 py-0.5 rounded`}>
-                      {patient.condition}
-                    </span>
                   </div>
                   <p className={`text-sm ${selectedPatient?.id === patient.id ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                    {patient.mrNo} | {patient.ward} - {patient.bed}
+                    {patient.mrNo || 'MR-N/A'}
                   </p>
                 </button>
               ))}
@@ -139,7 +144,7 @@ const CareNotes: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {existingNotes.map((note) => (
+                  {careNotes.map((note) => (
                     <div key={note.id} className="p-4 bg-muted/30 rounded-lg">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
@@ -159,6 +164,9 @@ const CareNotes: React.FC = () => {
                       <p className="text-sm">{note.note}</p>
                     </div>
                   ))}
+                  {careNotes.length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No care notes available. Add one to get started.</p>
+                  )}
                 </div>
               </>
             ) : (
@@ -187,7 +195,7 @@ const CareNotes: React.FC = () => {
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {noteTypes.map((type) => (
+                    {NOTE_TYPES.map((type) => (
                       <SelectItem key={type} value={type}>{type}</SelectItem>
                     ))}
                   </SelectContent>

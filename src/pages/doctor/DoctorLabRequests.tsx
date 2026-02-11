@@ -63,6 +63,20 @@ const availableTests = [
   'Serum Electrolytes',
 ];
 
+// Helper to format result - handles objects like {fev1, fvc, ratio}
+const formatResult = (result: any): string => {
+  if (result === null || result === undefined) return '-';
+  if (typeof result === 'string') return result;
+  if (typeof result === 'number') return String(result);
+  if (typeof result === 'object') {
+    // Convert object to readable string
+    return Object.entries(result)
+      .map(([key, val]) => `${key}: ${val}`)
+      .join(', ');
+  }
+  return String(result);
+};
+
 const DoctorLabRequests: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
@@ -99,7 +113,7 @@ const DoctorLabRequests: React.FC = () => {
           test: req.testName || req.test || 'Lab Test',
           requestDate: req.requestDate ? new Date(req.requestDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           status: req.status || 'pending',
-          result: req.result || req.summary || '-',
+          result: formatResult(req.result || req.summary || '-'),
           fullData: req,
         }));
         setLabRequests(requests);

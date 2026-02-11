@@ -41,32 +41,23 @@ const AdminReports: React.FC = () => {
     const fetchAnalytics = async () => {
       setLoading(true);
       try {
-        const analyticsRes = await api.getAnalyticsData(period).catch(err => {
-          console.error('Analytics fetch error:', err);
-          return { success: false, data: {} };
-        });
-        
-        const reportsRes = await api.getReports(period).catch(err => {
-          console.error('Reports fetch error:', err);
-          return { success: false, data: {} };
-        });
+        const analyticsRes = await api.getAnalyticsData(period);
+        const reportsRes = await api.getReports(period);
 
-        // Always set patient and revenue data either from API or defaults
+        // Set data only from API - no dummy data fallback
         if (analyticsRes?.success && analyticsRes?.data) {
-          setPatientData(analyticsRes.data.patientData || generateDummyPatientData());
-          setRevenueData(analyticsRes.data.revenueData || generateDummyRevenueData());
-          setDepartmentData(analyticsRes.data.departmentData || generateDummyDepartmentData());
+          setPatientData(analyticsRes.data.patientData || []);
+          setRevenueData(analyticsRes.data.revenueData || []);
+          setDepartmentData(analyticsRes.data.departmentData || []);
         } else {
-          // Use dummy data if API fails
-          setPatientData(generateDummyPatientData());
-          setRevenueData(generateDummyRevenueData());
-          setDepartmentData(generateDummyDepartmentData());
+          setPatientData([]);
+          setRevenueData([]);
+          setDepartmentData([]);
         }
 
         if (reportsRes?.success && reportsRes?.data) {
           setReports(reportsRes.data);
         } else {
-          // Set default reports data
           setReports({
             patientReports: { totalPatients: 0, newPatients: 0, admittedPatients: 0 },
             appointmentReports: { totalAppointments: 0, completedAppointments: 0, cancelledAppointments: 0 }
@@ -74,9 +65,10 @@ const AdminReports: React.FC = () => {
         }
       } catch (error) {
         console.error('Error fetching analytics:', error);
-        setPatientData(generateDummyPatientData());
-        setRevenueData(generateDummyRevenueData());
-        setDepartmentData(generateDummyDepartmentData());
+        toast.error('Failed to load analytics data');
+        setPatientData([]);
+        setRevenueData([]);
+        setDepartmentData([]);
         setReports({
           patientReports: { totalPatients: 0, newPatients: 0, admittedPatients: 0 },
           appointmentReports: { totalAppointments: 0, completedAppointments: 0, cancelledAppointments: 0 }
@@ -327,34 +319,5 @@ const AdminReports: React.FC = () => {
     </DashboardLayout>
   );
 };
-
-function generateDummyPatientData() {
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-  return monthNames.map(month => ({
-    month,
-    opd: Math.floor(Math.random() * 600) + 400,
-    ipd: Math.floor(Math.random() * 100) + 50,
-    emergency: Math.floor(Math.random() * 150) + 80,
-  }));
-}
-
-function generateDummyRevenueData() {
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-  return monthNames.map(month => ({
-    month,
-    revenue: Math.floor(Math.random() * 500000) + 800000,
-    expenses: Math.floor(Math.random() * 300000) + 600000,
-  }));
-}
-
-function generateDummyDepartmentData() {
-  return [
-    { name: 'General Medicine', value: 28 },
-    { name: 'Cardiology', value: 18 },
-    { name: 'Orthopedics', value: 15 },
-    { name: 'Pediatrics', value: 22 },
-    { name: 'Emergency', value: 17 },
-  ];
-}
 
 export default AdminReports;

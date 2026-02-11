@@ -219,6 +219,35 @@ class ApiClient {
     });
   }
 
+  // Referral endpoints
+  async getReferrals() {
+    return this.request('/referrals');
+  }
+
+  async getReferral(referralId) {
+    return this.request(`/referrals/${referralId}`);
+  }
+
+  async createReferral(data) {
+    return this.request('/referrals', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateReferral(referralId, data) {
+    return this.request(`/referrals/${referralId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteReferral(referralId) {
+    return this.request(`/referrals/${referralId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Lab Request endpoints
   async getLabRequests() {
     return this.request('/lab-requests');
@@ -306,6 +335,20 @@ class ApiClient {
     });
   }
 
+  async dischargePatient(wardPatientId) {
+    return this.request(`/nurse/discharge/${wardPatientId}`, {
+      method: 'PUT',
+    });
+  }
+
+  async getCareNotes(patientId) {
+    return this.request(`/nurse/care-notes/patient/${patientId}`);
+  }
+
+  async getPatientHistory(patientId) {
+    return this.request(`/patients/${patientId}/history`);
+  }
+
   // Billing endpoints
   async getInvoices() {
     return this.request('/billing');
@@ -349,7 +392,21 @@ class ApiClient {
   }
 
   async getLowStockItems() {
-    return this.request('/inventory/low-stock');
+    return this.request('/inventory/low-stock/list');
+  }
+
+  async getInventoryByCategory(category) {
+    return this.request(`/inventory/category/${category}`);
+  }
+
+  async getInventoryByDepartment(department) {
+    return this.request(`/inventory/department/${department}`);
+  }
+
+  async deleteInventoryItem(itemId) {
+    return this.request(`/inventory/${itemId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Admin endpoints

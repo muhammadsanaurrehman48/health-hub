@@ -38,7 +38,8 @@ interface Medicine {
   instructions: string;
 }
 
-const commonMedicines = [
+// Standard reference data - these can be fetched from database if needed
+const COMMON_MEDICINES = [
   'Paracetamol 500mg',
   'Amoxicillin 500mg',
   'Omeprazole 20mg',
@@ -51,7 +52,7 @@ const commonMedicines = [
   'Clopidogrel 75mg',
 ];
 
-const labTests = [
+const LAB_TESTS = [
   'Complete Blood Count (CBC)',
   'Blood Sugar Fasting',
   'Blood Sugar Random',
@@ -64,7 +65,7 @@ const labTests = [
   'Uric Acid',
 ];
 
-const radiologyTests = [
+const RADIOLOGY_TESTS = [
   'X-Ray Chest PA View',
   'X-Ray Spine',
   'Ultrasound Abdomen',
@@ -377,7 +378,7 @@ const ConsultationPage: React.FC = () => {
                         <SelectValue placeholder="Select or type medicine" />
                       </SelectTrigger>
                       <SelectContent>
-                        {commonMedicines.map((med) => (
+                        {COMMON_MEDICINES.map((med) => (
                           <SelectItem key={med} value={med}>{med}</SelectItem>
                         ))}
                       </SelectContent>
@@ -495,7 +496,7 @@ const ConsultationPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {labTests.map((test) => (
+                    {LAB_TESTS.map((test) => (
                       <div key={test} className="flex items-center space-x-3">
                         <Checkbox
                           id={test}
@@ -538,7 +539,7 @@ const ConsultationPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {radiologyTests.map((test) => (
+                    {RADIOLOGY_TESTS.map((test) => (
                       <div key={test} className="flex items-center space-x-3">
                         <Checkbox
                           id={test}

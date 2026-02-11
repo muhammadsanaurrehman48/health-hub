@@ -20,14 +20,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Package, Calendar, Building2 } from 'lucide-react';
+import { Plus, Package, Calendar, Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '@/utils/api';
 
-const categories = ['Medicine', 'Equipment', 'Consumables', 'Surgical', 'Lab Supplies'];
-const suppliers = ['MedSupply Co.', 'HealthCare Distributors', 'PharmaTech', 'Medical Essentials'];
+// Standard inventory categories
+const CATEGORIES = ['Medicine', 'Equipment', 'Consumables', 'Surgical', 'Lab Supplies'];
+const SUPPLIERS = ['MedSupply Co.', 'HealthCare Distributors', 'PharmaTech', 'Medical Essentials'];
+const DEPARTMENTS = ['General', 'Pharmacy', 'Laboratory', 'OT', 'Emergency'];
 
 const AddStock: React.FC = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stats, setStats] = useState({
+    itemsAdded: 0,
+    totalPurchases: 0,
+    activeSuppliers: 0,
+  });
   const [formData, setFormData] = useState({
     itemName: '',
     category: '',
@@ -39,31 +48,61 @@ const AddStock: React.FC = () => {
     department: '',
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.itemName || !formData.quantity || !formData.unitPrice) {
-      toast.error('Please fill in required fields');
+      toast.error('Please fill in required fields (Item Name, Quantity, Unit Price)');
       return;
     }
-    toast.success(`Stock added: ${formData.quantity} units of ${formData.itemName}`);
-    setIsAddDialogOpen(false);
-    setFormData({
-      itemName: '',
-      category: '',
-      supplier: '',
-      quantity: '',
-      unitPrice: '',
-      batchNo: '',
-      expiryDate: '',
-      department: '',
-    });
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        name: formData.itemName,
+        quantity: parseInt(formData.quantity),
+        unit: 'units',
+        category: formData.category || 'general',
+        supplier: formData.supplier,
+        price: parseFloat(formData.unitPrice),
+        batchNo: formData.batchNo,
+        expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
+        department: formData.department || 'General',
+        minStock: 10, // Default minimum stock
+      };
+
+      const response = await api.addInventoryItem(payload);
+      
+      if (response.success) {
+        toast.success(`Stock added successfully: ${formData.quantity} units of ${formData.itemName}`);
+        setIsAddDialogOpen(false);
+        setFormData({
+          itemName: '',
+          category: '',
+          supplier: '',
+          quantity: '',
+          unitPrice: '',
+          batchNo: '',
+          expiryDate: '',
+          department: '',
+        });
+        
+        // Update stats
+        setStats(prev => ({
+          itemsAdded: prev.itemsAdded + parseInt(formData.quantity),
+          totalPurchases: prev.totalPurchases + (parseInt(formData.quantity) * parseFloat(formData.unitPrice)),
+          activeSuppliers: formData.supplier ? prev.activeSuppliers + 1 : prev.activeSuppliers,
+        }));
+      } else {
+        toast.error(response.message || 'Failed to add stock');
+      }
+    } catch (error) {
+      console.error('Error adding stock:', error);
+      toast.error('Failed to add stock. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const recentAdditions = [
-    { item: 'Paracetamol 500mg', quantity: 5000, supplier: 'MedSupply Co.', date: '2025-02-01' },
-    { item: 'Surgical Gloves (L)', quantity: 2000, supplier: 'HealthCare Distributors', date: '2025-02-01' },
-    { item: 'Syringes 5ml', quantity: 3000, supplier: 'Medical Essentials', date: '2025-01-31' },
-    { item: 'Bandages (Medium)', quantity: 1000, supplier: 'MedSupply Co.', date: '2025-01-31' },
-  ];
+  // No dummy data - all data flows from database
 
   return (
     <DashboardLayout requiredRole="inventory">
@@ -102,7 +141,7 @@ const AddStock: React.FC = () => {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map(cat => (
+                        {CATEGORIES.map(cat => (
                           <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                         ))}
                       </SelectContent>
@@ -154,7 +193,7 @@ const AddStock: React.FC = () => {
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
                     <SelectContent>
-                      {suppliers.map(sup => (
+                      {SUPPLIERS.map(sup => (
                         <SelectItem key={sup} value={sup}>{sup}</SelectItem>
                       ))}
                     </SelectContent>
@@ -162,8 +201,11 @@ const AddStock: React.FC = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSubmit}>Add Stock</Button>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+                <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2">
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isSubmitting ? 'Adding...' : 'Add Stock'}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -178,8 +220,8 @@ const AddStock: React.FC = () => {
                   <Package className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">156</p>
-                  <p className="text-sm text-muted-foreground">Items Added This Month</p>
+                  <p className="text-2xl font-bold">{stats.itemsAdded}</p>
+                  <p className="text-sm text-muted-foreground">Items Added This Session</p>
                 </div>
               </div>
             </CardContent>
@@ -191,8 +233,8 @@ const AddStock: React.FC = () => {
                   <Calendar className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">Rs. 2.4M</p>
-                  <p className="text-sm text-muted-foreground">Total Purchases</p>
+                  <p className="text-2xl font-bold">Rs. {(stats.totalPurchases / 100000).toFixed(1)}L</p>
+                  <p className="text-sm text-muted-foreground">Total Purchases Value</p>
                 </div>
               </div>
             </CardContent>
@@ -204,32 +246,15 @@ const AddStock: React.FC = () => {
                   <Building2 className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">12</p>
-                  <p className="text-sm text-muted-foreground">Active Suppliers</p>
+                  <p className="text-2xl font-bold">{stats.activeSuppliers}</p>
+                  <p className="text-sm text-muted-foreground">Suppliers Used</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Recent Additions */}
-        <div className="bg-card rounded-xl border border-border p-6">
-          <h3 className="font-semibold text-foreground mb-4">Recent Stock Additions</h3>
-          <div className="space-y-3">
-            {recentAdditions.map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                <div>
-                  <p className="font-medium">{item.item}</p>
-                  <p className="text-sm text-muted-foreground">{item.supplier}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-primary">+{item.quantity.toLocaleString()} units</p>
-                  <p className="text-xs text-muted-foreground">{item.date}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Note: Recent Stock Additions will be fetched from database when available */}
       </div>
     </DashboardLayout>
   );

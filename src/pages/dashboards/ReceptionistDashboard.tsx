@@ -14,6 +14,7 @@ import {
   Ticket,
   Loader2,
   FileText,
+  Send,
 } from 'lucide-react';
 
 const ReceptionistDashboard: React.FC = () => {
@@ -137,10 +138,10 @@ const ReceptionistDashboard: React.FC = () => {
               to="/receptionist/entries"
             />
             <QuickAction
-              title="Generate Bill"
-              description="Create invoice"
-              icon={Receipt}
-              to="/receptionist/billing"
+              title="Make Referral"
+              description="Refer to specialist"
+              icon={Send}
+              to="/receptionist/referrals"
             />
             <QuickAction
               title="Print Documents"

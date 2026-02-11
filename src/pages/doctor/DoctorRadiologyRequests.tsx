@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { toast } from 'sonner';
+import api from '@/utils/api';
 import {
   Search,
   CheckCircle,
@@ -44,20 +45,8 @@ import {
   FileText,
   Image,
   Plus,
-} from 'lucide-react';
-
-const mockRadiologyRequests = [
-  { id: '1', requestNo: 'RAD-2025-0056', patientName: 'Muhammad Ali', mrNo: 'MR-001234', test: 'Chest X-Ray PA', requestDate: '2025-02-01', status: 'completed', finding: 'Normal' },
-  { id: '2', requestNo: 'RAD-2025-0055', patientName: 'Fatima Begum', mrNo: 'MR-001235', test: 'Ultrasound Abdomen', requestDate: '2025-02-01', status: 'pending', finding: '-' },
-  { id: '3', requestNo: 'RAD-2025-0054', patientName: 'Ahmed Khan', mrNo: 'MR-001236', test: 'MRI Spine', requestDate: '2025-01-31', status: 'completed', finding: 'Disc bulge L4-L5' },
-  { id: '4', requestNo: 'RAD-2025-0053', patientName: 'Sara Bibi', mrNo: 'MR-001237', test: 'CT Scan Brain', requestDate: '2025-01-31', status: 'in-progress', finding: '-' },
-];
-
-const mockPatients = [
-  { mrNo: 'MR-001234', name: 'Muhammad Ali' },
-  { mrNo: 'MR-001235', name: 'Fatima Begum' },
-  { mrNo: 'MR-001236', name: 'Ahmed Khan' },
-];
+  Loader2,
+}from 'lucide-react';
 
 const availableTests = [
   'Chest X-Ray PA',
@@ -74,27 +63,41 @@ const availableTests = [
   'Echo Cardiogram',
 ];
 
-const sampleRadReport = {
-  requestNo: 'RAD-2025-0054',
-  patientName: 'Ahmed Khan',
-  mrNo: 'MR-001236',
-  test: 'MRI Spine',
-  requestDate: '2025-01-31',
-  reportDate: '2025-01-31',
-  findings: 'There is evidence of disc bulge at L4-L5 level causing mild compression of the thecal sac. The spinal cord appears normal in signal intensity. No evidence of spinal canal stenosis. Vertebral body heights are maintained.',
-  impression: 'L4-L5 disc bulge with mild neural foraminal narrowing. Clinical correlation recommended.',
-  radiologist: 'Dr. Usman Malik',
-};
-
 const DoctorRadiologyRequests: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [isReportSheetOpen, setIsReportSheetOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [radiologyRequests, setRadiologyRequests] = useState<any[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // Request form state
   const [selectedPatient, setSelectedPatient] = useState('');
   const [selectedTests, setSelectedTests] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [radResponse, patientResponse] = await Promise.all([
+          api.getRadiologyRequests(),
+          api.getPatients()
+        ]);
+        if (radResponse.success) {
+          setRadiologyRequests(radResponse.data || []);
+        }
+        if (patientResponse.success) {
+          setPatients(patientResponse.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching radiology data:', error);
+        toast.error('Failed to load radiology requests');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -128,16 +131,36 @@ const DoctorRadiologyRequests: React.FC = () => {
 
   const handleViewReport = (req: any) => {
     if (req.status === 'completed') {
-      setSelectedReport(sampleRadReport);
+      setSelectedReport({
+        requestNo: req.requestNo,
+        patientName: req.patientName,
+        mrNo: req.mrNo,
+        test: req.test,
+        requestDate: req.requestDate,
+        reportDate: req.reportDate || req.requestDate,
+        findings: req.findings || 'Findings not yet available',
+        impression: req.impression || 'Impression not yet available',
+        radiologist: req.radiologist || 'Radiologist',
+      });
       setIsReportSheetOpen(true);
     }
   };
 
-  const filteredRequests = mockRadiologyRequests.filter((req) =>
-    req.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.mrNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.requestNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRequests = radiologyRequests.filter((req) =>
+    req.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    req.mrNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    req.requestNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="doctor">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="doctor">
@@ -261,9 +284,9 @@ const DoctorRadiologyRequests: React.FC = () => {
                     <SelectValue placeholder="Search patient by MR No" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockPatients.map((p) => (
-                      <SelectItem key={p.mrNo} value={p.mrNo}>
-                        {p.name} - {p.mrNo}
+                    {patients.map((p) => (
+                      <SelectItem key={p._id || p.mrNo} value={p.mrNo || p._id}>
+                        {p.name} - {p.mrNo || p.patientNo}
                       </SelectItem>
                     ))}
                   </SelectContent>

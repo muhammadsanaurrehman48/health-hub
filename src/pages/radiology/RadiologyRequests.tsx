@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import api from '@/utils/api';
 import {
   Search,
   Scan,
@@ -33,14 +34,8 @@ import {
   Printer,
   Upload,
   Image,
+  Loader2,
 } from 'lucide-react';
-
-const mockRadiologyRequests = [
-  { id: '1', requestNo: 'RAD-2025-0056', patientName: 'Muhammad Ali', mrNo: 'MR-001234', forceNo: 'F-12345', test: 'Chest X-Ray PA', doctor: 'Dr. Ahmad Khan', requestDate: '2025-02-01', status: 'pending' },
-  { id: '2', requestNo: 'RAD-2025-0055', patientName: 'Fatima Begum', mrNo: 'MR-001235', forceNo: 'F-12346', test: 'Ultrasound Abdomen', doctor: 'Dr. Sara Ali', requestDate: '2025-02-01', status: 'in-progress' },
-  { id: '3', requestNo: 'RAD-2025-0054', patientName: 'Ahmed Khan', mrNo: 'MR-001236', forceNo: 'F-12347', test: 'MRI Spine', doctor: 'Dr. Ahmad Khan', requestDate: '2025-01-31', status: 'completed' },
-  { id: '4', requestNo: 'RAD-2025-0053', patientName: 'Sara Bibi', mrNo: 'MR-001237', forceNo: 'F-12348', test: 'CT Scan Brain', doctor: 'Dr. Usman Malik', requestDate: '2025-01-31', status: 'completed' },
-];
 
 const RadiologyRequests: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +43,26 @@ const RadiologyRequests: React.FC = () => {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [findings, setFindings] = useState('');
   const [impression, setImpression] = useState('');
+  const [radiologyRequests, setRadiologyRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRadiologyRequests();
+  }, []);
+
+  const fetchRadiologyRequests = async () => {
+    try {
+      const response = await api.getRadiologyRequests();
+      if (response.success) {
+        setRadiologyRequests(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching radiology requests:', error);
+      toast.error('Failed to load radiology requests');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -78,11 +93,21 @@ const RadiologyRequests: React.FC = () => {
     setImpression('');
   };
 
-  const filteredRequests = mockRadiologyRequests.filter((req) =>
-    req.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.mrNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.requestNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRequests = radiologyRequests.filter((req) =>
+    req.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    req.mrNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    req.requestNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="radiologist">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="radiologist">
@@ -103,7 +128,7 @@ const RadiologyRequests: React.FC = () => {
                   <Clock className="w-5 h-5 text-warning" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockRadiologyRequests.filter(r => r.status === 'pending').length}</p>
+                  <p className="text-2xl font-bold">{radiologyRequests.filter(r => r.status === 'pending').length}</p>
                   <p className="text-sm text-muted-foreground">Pending</p>
                 </div>
               </div>
@@ -116,7 +141,7 @@ const RadiologyRequests: React.FC = () => {
                   <PlayCircle className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockRadiologyRequests.filter(r => r.status === 'in-progress').length}</p>
+                  <p className="text-2xl font-bold">{radiologyRequests.filter(r => r.status === 'in-progress').length}</p>
                   <p className="text-sm text-muted-foreground">In Progress</p>
                 </div>
               </div>
@@ -129,7 +154,7 @@ const RadiologyRequests: React.FC = () => {
                   <CheckCircle className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{mockRadiologyRequests.filter(r => r.status === 'completed').length}</p>
+                  <p className="text-2xl font-bold">{radiologyRequests.filter(r => r.status === 'completed').length}</p>
                   <p className="text-sm text-muted-foreground">Completed Today</p>
                 </div>
               </div>

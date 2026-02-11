@@ -120,6 +120,10 @@ const DoctorPrescriptions: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
+  const handleRefresh = () => {
+    fetchData(true);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':

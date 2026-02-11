@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Logo from '@/assets/logo.png';
+import api from '@/utils/api';
 import {
   Table,
   TableBody,
@@ -21,152 +22,65 @@ import {
   Clock,
   CheckCircle,
   FileText,
+  Loader2,
 } from 'lucide-react';
-
-const mockPrescriptions = [
-  {
-    id: '1',
-    rxNo: 'RX-456789',
-    date: '2025-02-01',
-    status: 'ready',
-    patient: {
-      name: 'Muhammad Ali',
-      forceNo: 'F-12345',
-      age: 45,
-      gender: 'Male',
-      phone: '0300-1234567',
-    },
-    doctor: {
-      name: 'Dr. Ahmad Khan',
-      specialization: 'Cardiologist',
-      qualification: 'MBBS, MD (Cardiology)',
-      regNo: 'PMC-12345',
-    },
-    vitals: {
-      bloodPressure: '140/90 mmHg',
-      pulse: '78 bpm',
-      temperature: '37.2°C',
-      weight: '75 kg',
-    },
-    diagnosis: 'Hypertension, Type 2 Diabetes Mellitus',
-    medicines: [
-      { name: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take in morning' },
-      { name: 'Metformin', dosage: '500mg', frequency: 'Twice daily', duration: '30 days', instructions: 'Take with meals' },
-      { name: 'Aspirin', dosage: '100mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take in evening' },
-    ],
-    labTests: ['Complete Blood Count (CBC)', 'Fasting Blood Sugar', 'Lipid Profile'],
-    radiologyTests: ['Chest X-Ray'],
-    notes: 'Follow dietary guidelines. Avoid excess salt and sugar. Monitor blood pressure daily.',
-    followUpDate: '2025-03-01',
-  },
-  {
-    id: '2',
-    rxNo: 'RX-456788',
-    date: '2025-02-01',
-    status: 'pending',
-    patient: {
-      name: 'Fatima Begum',
-      forceNo: '',
-      age: 32,
-      gender: 'Female',
-      phone: '0321-9876543',
-    },
-    doctor: {
-      name: 'Dr. Sara Ali',
-      specialization: 'General Practitioner',
-      qualification: 'MBBS',
-      regNo: 'PMC-65432',
-    },
-    vitals: {
-      bloodPressure: '120/80 mmHg',
-      pulse: '72 bpm',
-      temperature: '36.8°C',
-      weight: '62 kg',
-    },
-    diagnosis: 'Upper Respiratory Tract Infection',
-    medicines: [
-      { name: 'Amoxicillin', dosage: '500mg', frequency: 'Three times daily', duration: '7 days', instructions: 'Complete full course' },
-      { name: 'Paracetamol', dosage: '500mg', frequency: 'As needed', duration: '3 days', instructions: 'For headache/fever' },
-    ],
-    labTests: [],
-    radiologyTests: [],
-    notes: 'Rest well. Stay hydrated. Avoid smoking.',
-    followUpDate: 'As needed',
-  },
-  {
-    id: '3',
-    rxNo: 'RX-456787',
-    date: '2025-01-31',
-    status: 'ready',
-    patient: {
-      name: 'Ahmed Khan',
-      forceNo: 'F-12347',
-      age: 58,
-      gender: 'Male',
-      phone: '0333-5555555',
-    },
-    doctor: {
-      name: 'Dr. Ahmad Khan',
-      specialization: 'Cardiologist',
-      qualification: 'MBBS, MD (Cardiology)',
-      regNo: 'PMC-12345',
-    },
-    vitals: {
-      bloodPressure: '150/95 mmHg',
-      pulse: '82 bpm',
-      temperature: '37.0°C',
-      weight: '88 kg',
-    },
-    diagnosis: 'Hypertension, Angina Pectoris',
-    medicines: [
-      { name: 'Amlodipine', dosage: '5mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take in morning' },
-      { name: 'Isosorbide Dinitrate', dosage: '10mg', frequency: 'Twice daily', duration: '30 days', instructions: 'As prescribed' },
-    ],
-    labTests: ['Lipid Profile', 'Troponin Test'],
-    radiologyTests: ['ECG', 'Chest X-Ray'],
-    notes: 'Avoid strenuous activities. Take rest. Report any chest pain immediately.',
-    followUpDate: '2025-02-15',
-  },
-];
-
-const mockReferrals = [
-  { id: '1', refNo: 'REF-2025-001', patientName: 'Muhammad Ali', forceNo: 'F-12345', hospital: 'NICVD Hospital Karachi', date: '2025-02-06', doctor: 'Dr. Imran Shah', status: 'pending' },
-  { id: '2', refNo: 'REF-2025-002', patientName: 'Fatima Begum', forceNo: '', hospital: 'SIUT Hospital Karachi', date: '2025-02-05', doctor: 'Dr. Khalid Mehmood', status: 'completed' },
-];
-
-const mockLabRequests = [
-  { id: '1', labNo: 'LAB-2025-0123', patientName: 'Muhammad Ali', forceNo: 'F-12345', test: 'Complete Blood Count', date: '2025-02-01', status: 'ready' },
-  { id: '2', labNo: 'LAB-2025-0122', patientName: 'Fatima Begum', forceNo: '', test: 'Blood Sugar Fasting', date: '2025-02-01', status: 'pending' },
-];
-
-const mockRadiologyRequests = [
-  { id: '1', radNo: 'RAD-2025-0056', patientName: 'Muhammad Ali', forceNo: 'F-12345', test: 'Chest X-Ray', date: '2025-02-01', status: 'ready' },
-  { id: '2', radNo: 'RAD-2025-0055', patientName: 'Fatima Begum', forceNo: '', test: 'Ultrasound Abdomen', date: '2025-02-01', status: 'pending' },
-];
 
 const ReceptionistDocuments: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPrescription, setSelectedPrescription] = useState<any>(null);
   const [selectedReferral, setSelectedReferral] = useState<any>(null);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [labRequests, setLabRequests] = useState<any[]>([]);
+  const [radiologyRequests, setRadiologyRequests] = useState<any[]>([]);
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredPrescriptions = mockPrescriptions.filter(p =>
-    p.patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.patient.forceNo && p.patient.forceNo.toLowerCase().includes(searchQuery.toLowerCase()))
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [prescRes, labRes, radRes, refRes] = await Promise.all([
+          api.getPrescriptions(),
+          api.getLabRequests(),
+          api.getRadiologyRequests(),
+          api.getReferrals()
+        ]);
+        
+        if (prescRes.success) setPrescriptions(prescRes.data || []);
+        if (labRes.success) setLabRequests(labRes.data || []);
+        if (radRes.success) setRadiologyRequests(radRes.data || []);
+        if (refRes.success) setReferrals(refRes.data || []);
+      } catch (error) {
+        console.error('Error fetching documents:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const filteredPrescriptions = prescriptions.filter(p =>
+    p.patient?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.patient?.forceNo && p.patient.forceNo.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    p.rxNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredReferrals = mockReferrals.filter(r =>
-    r.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.forceNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredLabRequests = labRequests.filter(l =>
+    l.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (l.forceNo && l.forceNo.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    l.labNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredLabRequests = mockLabRequests.filter(l =>
-    l.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    l.forceNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRadiologyRequests = radiologyRequests.filter(r =>
+    r.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (r.forceNo && r.forceNo.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    r.radNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.requestNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredRadiologyRequests = mockRadiologyRequests.filter(r =>
-    r.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.forceNo.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredReferrals = referrals.filter(r =>
+    r.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (r.forceNo && r.forceNo.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    r.referralNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handlePrintPrescription = (prescription: any) => {
@@ -958,13 +872,13 @@ const ReceptionistDocuments: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {filteredReferrals.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-mono font-semibold">{r.refNo}</TableCell>
+                      <TableRow key={r._id || r.id}>
+                        <TableCell className="font-mono font-semibold">{r.referralNo}</TableCell>
                         <TableCell>{r.patientName}</TableCell>
                         <TableCell>{r.forceNo || '-'}</TableCell>
-                        <TableCell>{r.hospital}</TableCell>
-                        <TableCell>{r.doctor}</TableCell>
-                        <TableCell>{new Date(r.date).toLocaleDateString()}</TableCell>
+                        <TableCell>{r.referredTo}</TableCell>
+                        <TableCell>{r.referredDoctor || '-'}</TableCell>
+                        <TableCell>{new Date(r.date || r.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell>{getStatusBadge(r.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

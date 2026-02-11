@@ -37,6 +37,7 @@ import AppointmentsPage from "./pages/receptionist/AppointmentsPage";
 import EntriesPage from "./pages/receptionist/EntriesPage";
 import BillingPage from "./pages/receptionist/BillingPage";
 import ReceptionistDocuments from "./pages/receptionist/ReceptionistDocuments";
+import ReceptionistReferrals from "./pages/receptionist/ReceptionistReferrals";
 
 // Doctor Pages
 import DoctorAppointments from "./pages/doctor/DoctorAppointments";
@@ -111,6 +112,7 @@ const App = () => (
             <Route path="/receptionist/appointments" element={<AppointmentsPage />} />
             <Route path="/receptionist/entries" element={<EntriesPage />} />
             <Route path="/receptionist/billing" element={<BillingPage />} />
+            <Route path="/receptionist/referrals" element={<ReceptionistReferrals />} />
             <Route path="/receptionist/documents" element={<ReceptionistDocuments />} />
             
               {/* Doctor Routes */}
