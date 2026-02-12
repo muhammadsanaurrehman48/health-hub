@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import api from '@/utils/api';
 import {
   User,
   FileText,
@@ -26,6 +28,7 @@ import {
   Calendar,
   Printer,
   Send,
+  Loader2,
 } from 'lucide-react';
 import PrescriptionTemplate from '@/components/templates/PrescriptionTemplate';
 
@@ -38,63 +41,129 @@ interface Medicine {
   instructions: string;
 }
 
-// Standard reference data - these can be fetched from database if needed
-const COMMON_MEDICINES = [
-  'Paracetamol 500mg',
-  'Amoxicillin 500mg',
-  'Omeprazole 20mg',
-  'Metformin 500mg',
-  'Amlodipine 5mg',
-  'Atorvastatin 10mg',
-  'Ibuprofen 400mg',
-  'Azithromycin 500mg',
-  'Ciprofloxacin 500mg',
-  'Clopidogrel 75mg',
-];
-
-const LAB_TESTS = [
-  'Complete Blood Count (CBC)',
-  'Blood Sugar Fasting',
-  'Blood Sugar Random',
-  'HbA1c',
-  'Lipid Profile',
-  'Liver Function Test (LFT)',
-  'Kidney Function Test (KFT)',
-  'Thyroid Function Test',
-  'Urine Complete',
-  'Uric Acid',
-];
-
-const RADIOLOGY_TESTS = [
-  'X-Ray Chest PA View',
-  'X-Ray Spine',
-  'Ultrasound Abdomen',
-  'CT Scan Brain',
-  'CT Scan Chest',
-  'MRI Brain',
-  'MRI Spine',
-  'ECG',
-  'Echocardiography',
-];
-
 const ConsultationPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Inventory state
+  const [availableMedicines, setAvailableMedicines] = useState<any[]>([]);
+  const [availableLabTests, setAvailableLabTests] = useState<any[]>([]);
+  const [availableRadiologyTests, setAvailableRadiologyTests] = useState<any[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState(true);
+  
   const patient = location.state?.patient || {
     patientName: 'Muhammad Ali',
-    mrNo: 'MR-001234',
+    patientNo: 'MR-001234',
     forceNo: 'F-12345',
     age: 45,
     gender: 'Male',
     complaint: 'Chest pain',
   };
 
+  // Fetch inventory items on component mount
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        setInventoryLoading(true);
+        const response = await api.request('/inventory');
+        
+        if (response.success && Array.isArray(response.data)) {
+          // Filter medicines (category: Medicine or Pharmacy)
+          const medicines = response.data.filter((item: any) => 
+            (item.category === 'Medicine' || item.category === 'pharmacy') && item.quantity > 0
+          ).map((m: any) => m.name);
+          
+          // Filter lab tests (category: Lab Supplies)
+          const labTests = response.data.filter((item: any) => 
+            (item.category === 'Lab' || item.category === 'Lab Supplies') && item.quantity > 0
+          ).map((t: any) => t.name);
+          
+          // Filter radiology tests - store both name and category for better organization
+          const radiologyTests = response.data.filter((item: any) => 
+            (item.category === 'Lab' || item.category === 'Lab Supplies' || item.name.includes('Ray') || item.name.includes('Ultrasound') || item.name.includes('Scan') || item.name.includes('CT') || item.name.includes('MRI'))
+            && item.quantity > 0
+          ).map((t: any) => ({ id: t._id, name: t.name }));
+          
+          setAvailableMedicines([...new Set(medicines)]);
+          setAvailableLabTests([...new Set(labTests)]);
+          setAvailableRadiologyTests(radiologyTests.filter((t: any) => !labTests.includes(t.name)));
+        }
+      } catch (error) {
+        console.error('Failed to fetch inventory:', error);
+        toast.error('Failed to load medicines and tests from inventory');
+      } finally {
+        setInventoryLoading(false);
+      }
+    };
+    
+    fetchInventory();
+  }, []);
+  
+  // Fetch vitals recorded by nurse (with polling until vitals arrive)
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout | null = null;
+    
+    const fetchVitals = async () => {
+      try {
+        const appointmentId = location.state?.appointmentId || location.state?.id;
+        if (!appointmentId) {
+          console.log('⚠️ [DOCTOR] No appointment ID found');
+          return;
+        }
+        
+        setVitalsLoading(true);
+        const response = await api.getAppointmentVitals(appointmentId);
+        
+        if (response.success && response.data) {
+          console.log('✅ [DOCTOR] Vitals fetched from nurse:', response.data);
+          setBloodPressure(response.data.bloodPressure || '');
+          setPulse(response.data.pulse?.toString() || '');
+          setTemperature(response.data.temperature?.toString() || '');
+          setSpo2(response.data.spo2?.toString() || '');
+          setVitalsRecorded(true);
+          if (response.data.nurseId?.name) {
+            setNurseName(response.data.nurseId.name);
+          }
+          // Stop polling once vitals are found
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+          }
+        } else {
+          console.log('⚠️ [DOCTOR] No vitals recorded yet by nurse');
+          setVitalsRecorded(false);
+        }
+      } catch (error) {
+        console.error('❌ [DOCTOR] Error fetching vitals:', error);
+        setVitalsRecorded(false);
+      } finally {
+        setVitalsLoading(false);
+      }
+    };
+    
+    fetchVitals();
+    
+    // Poll every 10 seconds until vitals are recorded
+    const appointmentId = location.state?.appointmentId || location.state?.id;
+    if (appointmentId) {
+      pollInterval = setInterval(fetchVitals, 10000);
+    }
+    
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [location.state]);
+  
   // Vitals
   const [bloodPressure, setBloodPressure] = useState('');
   const [pulse, setPulse] = useState('');
   const [temperature, setTemperature] = useState('');
   const [weight, setWeight] = useState('');
   const [spo2, setSpo2] = useState('');
+  const [vitalsRecorded, setVitalsRecorded] = useState(false);
+  const [vitalsLoading, setVitalsLoading] = useState(false);
+  const [nurseName, setNurseName] = useState('');
 
   // Diagnosis
   const [diagnosis, setDiagnosis] = useState('');
@@ -160,11 +229,21 @@ const ConsultationPage: React.FC = () => {
     toast.success('Consultation saved successfully!');
   };
 
-  const handleComplete = () => {
-    toast.success('Consultation completed!', {
-      description: 'Prescription sent to Pharmacy. Lab requests sent to Laboratory.',
-    });
-    navigate('/doctor/appointments');
+  const handleComplete = async () => {
+    const appointmentId = location.state?.appointmentId || location.state?.id;
+    try {
+      if (appointmentId) {
+        await api.updateAppointment(appointmentId, { status: 'completed' });
+        console.log('✅ [DOCTOR] Appointment marked as completed:', appointmentId);
+      }
+      toast.success('Consultation completed!', {
+        description: 'Prescription sent to Pharmacy. Lab requests sent to Laboratory.',
+      });
+      navigate('/doctor/appointments');
+    } catch (error) {
+      console.error('❌ [DOCTOR] Error completing consultation:', error);
+      toast.error('Failed to complete consultation');
+    }
   };
 
   const prescriptionData = {
@@ -172,16 +251,16 @@ const ConsultationPage: React.FC = () => {
     date: new Date().toLocaleDateString(),
     patient: {
       name: patient.patientName,
-      mrNo: patient.mrNo,
+      patientNo: patient.patientNo,
       forceNo: patient.forceNo,
       age: patient.age,
       gender: patient.gender,
       phone: '0300-1234567',
     },
     doctor: {
-      name: 'Dr. Ahmad Khan',
-      specialization: 'Cardiologist',
-      qualification: 'MBBS, FCPS (Cardiology)',
+      name: user?.name || 'Dr. Unknown',
+      specialization: user?.department || 'General Practice',
+      qualification: 'MBBS, FCPS',
       regNo: 'PMC-12345',
     },
     vitals: {
@@ -253,7 +332,7 @@ const ConsultationPage: React.FC = () => {
                 <div>
                   <h3 className="font-bold text-lg">{patient.patientName}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {patient.mrNo} | {patient.forceNo} | {patient.age}y / {patient.gender}
+                    {patient.patientNo} | {patient.forceNo} | {patient.age}y / {patient.gender}
                   </p>
                 </div>
               </div>
@@ -278,10 +357,32 @@ const ConsultationPage: React.FC = () => {
           <TabsContent value="vitals">
             <Card>
               <CardHeader>
-                <CardTitle>Patient Vitals</CardTitle>
-                <CardDescription>Record patient's current vital signs</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Patient Vitals</CardTitle>
+                    <CardDescription>Record patient's current vital signs</CardDescription>
+                  </div>
+                  {vitalsRecorded ? (
+                    <div className="text-right">
+                      <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                        ✓ Recorded by Nurse
+                      </Badge>
+                      {nurseName && <p className="text-xs text-muted-foreground mt-1">{nurseName}</p>}
+                    </div>
+                  ) : (
+                    <Badge variant="secondary">
+                      ⏳ Awaiting Nurse Input
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
+                {vitalsLoading && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading vitals...</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="space-y-2">
                     <Label>Blood Pressure</Label>
@@ -373,14 +474,18 @@ const ConsultationPage: React.FC = () => {
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-3 p-4 bg-muted/30 rounded-lg">
                   <div className="md:col-span-2">
                     <Label>Medicine Name</Label>
-                    <Select value={newMedicineName} onValueChange={setNewMedicineName}>
+                    <Select value={newMedicineName} onValueChange={setNewMedicineName} disabled={inventoryLoading}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select or type medicine" />
+                        <SelectValue placeholder={inventoryLoading ? "Loading medicines..." : "Select medicine"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {COMMON_MEDICINES.map((med) => (
-                          <SelectItem key={med} value={med}>{med}</SelectItem>
-                        ))}
+                        {availableMedicines.length === 0 ? (
+                          <SelectItem value="no-medicines" disabled>No medicines available in inventory</SelectItem>
+                        ) : (
+                          availableMedicines.map((med) => (
+                            <SelectItem key={med} value={med}>{med}</SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -495,20 +600,29 @@ const ConsultationPage: React.FC = () => {
                   <CardDescription>Select tests to request from laboratory</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {LAB_TESTS.map((test) => (
-                      <div key={test} className="flex items-center space-x-3">
-                        <Checkbox
-                          id={test}
-                          checked={selectedLabTests.includes(test)}
-                          onCheckedChange={() => toggleLabTest(test)}
-                        />
-                        <label htmlFor={test} className="text-sm font-medium cursor-pointer">
-                          {test}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+                  {inventoryLoading ? (
+                    <div className="flex items-center gap-2 py-8">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <p>Loading tests...</p>
+                    </div>
+                  ) : availableLabTests.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4">No lab tests available in inventory</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {availableLabTests.map((test) => (
+                        <div key={test} className="flex items-center space-x-3">
+                          <Checkbox
+                            id={`lab-${test}`}
+                            checked={selectedLabTests.includes(test)}
+                            onCheckedChange={() => toggleLabTest(test)}
+                          />
+                          <label htmlFor={`lab-${test}`} className="text-sm font-medium cursor-pointer">
+                            {test}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {selectedLabTests.length > 0 && (
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm font-medium mb-2">Selected ({selectedLabTests.length}):</p>
@@ -538,20 +652,29 @@ const ConsultationPage: React.FC = () => {
                   <CardDescription>Select imaging tests to request</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {RADIOLOGY_TESTS.map((test) => (
-                      <div key={test} className="flex items-center space-x-3">
-                        <Checkbox
-                          id={test}
-                          checked={selectedRadiologyTests.includes(test)}
-                          onCheckedChange={() => toggleRadiologyTest(test)}
-                        />
-                        <label htmlFor={test} className="text-sm font-medium cursor-pointer">
-                          {test}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+                  {inventoryLoading ? (
+                    <div className="flex items-center gap-2 py-8">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <p>Loading tests...</p>
+                    </div>
+                  ) : availableRadiologyTests.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4">No radiology tests available in inventory</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {availableRadiologyTests.map((test: any) => (
+                        <div key={test.id} className="flex items-center space-x-3">
+                          <Checkbox
+                            id={`rad-${test.id}`}
+                            checked={selectedRadiologyTests.includes(test.name)}
+                            onCheckedChange={() => toggleRadiologyTest(test.name)}
+                          />
+                          <label htmlFor={`rad-${test.id}`} className="text-sm font-medium cursor-pointer">
+                            {test.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {selectedRadiologyTests.length > 0 && (
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm font-medium mb-2">Selected ({selectedRadiologyTests.length}):</p>

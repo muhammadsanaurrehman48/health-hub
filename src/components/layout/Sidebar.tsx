@@ -129,10 +129,10 @@ export const Sidebar: React.FC = () => {
       {/* Logo & Brand */}
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <img src={Logo} alt="ASF Medical" className="w-10 h-10 rounded-lg" />
+          <img src={Logo} alt="ASF Medical Center" className="w-10 h-10 rounded-lg" />
           <div>
             <h1 className="font-semibold text-sidebar-foreground">ASF Medical</h1>
-            <p className="text-xs text-muted-foreground">Health Management</p>
+            <p className="text-xs text-muted-foreground">Karachi</p>
           </div>
         </div>
       </div>

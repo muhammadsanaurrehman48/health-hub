@@ -65,6 +65,28 @@ const InventoryItems: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  
+  // Edit dialog state
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    quantity: '',
+    unit: '',
+    minStock: '',
+    price: '',
+    category: '',
+    batchNo: '',
+    expiryDate: '',
+    supplier: '',
+    department: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Delete confirmation state
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Real-time polling - fetch inventory every 5 seconds
   useEffect(() => {
@@ -144,6 +166,102 @@ const InventoryItems: React.FC = () => {
   const lowStockItems = inventoryItems.filter(i => i.quantity <= i.minStock);
   const expiredItems = inventoryItems.filter(i => isExpired(i.expiryDate));
   const expiringItems = inventoryItems.filter(i => isExpiringoon(i.expiryDate));
+
+  const handleEditClick = (item: InventoryItem) => {
+    setEditingItem(item);
+    setEditFormData({
+      name: item.name,
+      quantity: item.quantity.toString(),
+      unit: item.unit,
+      minStock: item.minStock.toString(),
+      price: item.price.toString(),
+      category: item.category,
+      batchNo: item.batchNo || '',
+      expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '',
+      supplier: item.supplier || '',
+      department: item.department || 'General',
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem || !editFormData.name || !editFormData.quantity || !editFormData.price) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        name: editFormData.name,
+        quantity: parseInt(editFormData.quantity),
+        unit: editFormData.unit,
+        minStock: parseInt(editFormData.minStock),
+        price: parseFloat(editFormData.price),
+        category: editFormData.category,
+        batchNo: editFormData.batchNo,
+        expiryDate: editFormData.expiryDate ? new Date(editFormData.expiryDate) : undefined,
+        supplier: editFormData.supplier,
+        department: editFormData.department,
+      };
+
+      const response = await api.updateInventoryItem(editingItem.id || editingItem._id || '', payload);
+      
+      if (response.success) {
+        toast.success(`Item updated: ${editFormData.name}`);
+        setIsEditDialogOpen(false);
+        setEditingItem(null);
+        
+        // Refresh inventory
+        const inventoryResponse = await api.getInventory();
+        if (inventoryResponse.success) {
+          setInventoryItems(inventoryResponse.data);
+          setLastUpdated(new Date());
+        }
+      } else {
+        toast.error(response.message || 'Failed to update item');
+      }
+    } catch (error) {
+      console.error('Error updating item:', error);
+      toast.error('Failed to update item. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteClick = (item: InventoryItem) => {
+    setItemToDelete(item);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await api.deleteInventoryItem(itemToDelete.id || itemToDelete._id || '');
+      
+      if (response.success) {
+        toast.success(`Item deleted: ${itemToDelete.name}`);
+        setIsDeleteDialogOpen(false);
+        setItemToDelete(null);
+        
+        // Refresh inventory
+        const inventoryResponse = await api.getInventory();
+        if (inventoryResponse.success) {
+          setInventoryItems(inventoryResponse.data);
+          setLastUpdated(new Date());
+        }
+      } else {
+        toast.error(response.message || 'Failed to delete item');
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast.error('Failed to delete item. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -401,10 +519,22 @@ const InventoryItems: React.FC = () => {
                         <TableCell>{getStockStatus(item)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleEditClick(item)}
+                              title="Edit item"
+                            >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteClick(item)}
+                              title="Delete item"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
@@ -426,6 +556,181 @@ const InventoryItems: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Edit Item Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Inventory Item</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Item Name *</Label>
+                  <Input
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    placeholder="Enter item name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={editFormData.category} onValueChange={(v) => setEditFormData({ ...editFormData, category: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Medicine">Medicine</SelectItem>
+                      <SelectItem value="Equipment">Equipment</SelectItem>
+                      <SelectItem value="Consumables">Consumables</SelectItem>
+                      <SelectItem value="Surgical">Surgical</SelectItem>
+                      <SelectItem value="Lab Supplies">Lab Supplies</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Quantity *</Label>
+                  <Input
+                    type="number"
+                    value={editFormData.quantity}
+                    onChange={(e) => setEditFormData({ ...editFormData, quantity: e.target.value })}
+                    placeholder="Enter quantity"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unit</Label>
+                  <Input
+                    value={editFormData.unit}
+                    onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })}
+                    placeholder="e.g., tablets, boxes"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Unit Price (Rs.) *</Label>
+                  <Input
+                    type="number"
+                    value={editFormData.price}
+                    onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })}
+                    placeholder="Enter price"
+                    step="0.01"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Minimum Stock</Label>
+                  <Input
+                    type="number"
+                    value={editFormData.minStock}
+                    onChange={(e) => setEditFormData({ ...editFormData, minStock: e.target.value })}
+                    placeholder="Enter minimum stock"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Batch Number</Label>
+                  <Input
+                    value={editFormData.batchNo}
+                    onChange={(e) => setEditFormData({ ...editFormData, batchNo: e.target.value })}
+                    placeholder="Enter batch number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Expiry Date</Label>
+                  <Input
+                    type="date"
+                    value={editFormData.expiryDate}
+                    onChange={(e) => setEditFormData({ ...editFormData, expiryDate: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Supplier</Label>
+                  <Input
+                    value={editFormData.supplier}
+                    onChange={(e) => setEditFormData({ ...editFormData, supplier: e.target.value })}
+                    placeholder="Enter supplier name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Department</Label>
+                  <Select value={editFormData.department} onValueChange={(v) => setEditFormData({ ...editFormData, department: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="General">General</SelectItem>
+                      <SelectItem value="Pharmacy">Pharmacy</SelectItem>
+                      <SelectItem value="Laboratory">Laboratory</SelectItem>
+                      <SelectItem value="OT">OT</SelectItem>
+                      <SelectItem value="Emergency">Emergency</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={isSubmitting} className="gap-2">
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Item</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-muted-foreground">
+                Are you sure you want to delete <span className="font-semibold text-foreground">{itemToDelete?.name}</span>?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This action cannot be undone. The item will be permanently removed from inventory.
+              </p>
+              {itemToDelete && (
+                <div className="bg-muted/50 p-3 rounded-lg text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <span className="text-muted-foreground">Current Stock:</span>
+                    <span className="font-medium">{itemToDelete.quantity} {itemToDelete.unit}</span>
+                    <span className="text-muted-foreground">Batch No:</span>
+                    <span className="font-medium">{itemToDelete.batchNo || '-'}</span>
+                    <span className="text-muted-foreground">Supplier:</span>
+                    <span className="font-medium">{itemToDelete.supplier || '-'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="gap-2"
+              >
+                {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isDeleting ? 'Deleting...' : 'Delete Item'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

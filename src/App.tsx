@@ -21,7 +21,7 @@ import LaboratoryDashboard from "./pages/dashboards/LaboratoryDashboard";
 import PharmacyDashboard from "./pages/dashboards/PharmacyDashboard";
 import InventoryDashboard from "./pages/dashboards/InventoryDashboard";
 import BillingDashboard from "./pages/dashboards/BillingDashboard";
-import NurseDashboard from "./pages/dashboards/NurseDashboard";
+import NurseDashboard from "./pages/nurse/NurseDashboard";
 
 // Admin Pages
 import UserManagement from "./pages/admin/UserManagement";

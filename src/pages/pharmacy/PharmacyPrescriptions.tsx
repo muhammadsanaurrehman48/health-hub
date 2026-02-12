@@ -55,41 +55,6 @@ const PharmacyPrescriptions: React.FC = () => {
     fetchPrescriptions();
   }, []);
 
-  const samplePrescriptionData = {
-    prescriptionNo: 'RX-456789',
-    date: '2025-02-01',
-    patient: {
-      name: 'Muhammad Ali',
-      mrNo: 'MR-001234',
-      forceNo: 'F-12345',
-      age: 45,
-      gender: 'Male',
-      phone: '0300-1234567',
-    },
-    doctor: {
-      name: 'Dr. Ahmad Khan',
-      specialization: 'Cardiology',
-      qualification: 'MBBS, FCPS',
-      regNo: 'PMC-12345',
-    },
-    vitals: {
-      bloodPressure: '130/85',
-      pulse: '78 bpm',
-      temperature: '98.6°F',
-      weight: '75 kg',
-    },
-    diagnosis: 'Essential Hypertension',
-    medicines: [
-      { name: 'Amlodipine', dosage: '5mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take in the morning' },
-      { name: 'Atorvastatin', dosage: '10mg', frequency: 'Once daily at night', duration: '30 days', instructions: 'Take after dinner' },
-      { name: 'Aspirin', dosage: '75mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take after breakfast' },
-    ],
-    labTests: [],
-    radiologyTests: [],
-    notes: 'Low salt diet recommended.',
-    followUpDate: '2025-03-01',
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'dispensed':
@@ -216,7 +181,9 @@ const PharmacyPrescriptions: React.FC = () => {
                     <TableCell>{rx.mrNo}</TableCell>
                     <TableCell>{rx.doctor}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{rx.medicines} medicines</Badge>
+                      <Badge variant="outline">
+                        {Array.isArray(rx.medicines) ? rx.medicines.length : 0} medicine{Array.isArray(rx.medicines) && rx.medicines.length !== 1 ? 's' : ''}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-sm">{rx.date}</TableCell>
                     <TableCell>{getStatusBadge(rx.status)}</TableCell>
@@ -251,7 +218,7 @@ const PharmacyPrescriptions: React.FC = () => {
               <SheetTitle>Prescription Details</SheetTitle>
             </SheetHeader>
             <div className="mt-6">
-              <PrescriptionTemplate data={samplePrescriptionData} />
+              {selectedRx && <PrescriptionTemplate data={selectedRx} />}
             </div>
           </SheetContent>
         </Sheet>

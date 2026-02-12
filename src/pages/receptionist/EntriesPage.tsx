@@ -507,18 +507,14 @@ const EntriesPage: React.FC = () => {
                           <SelectValue placeholder="Select doctor" />
                         </SelectTrigger>
                         <SelectContent>
-                          {doctors.length > 0 ? (
+                          {doctors && doctors.length > 0 ? (
                             doctors.map((doc: any) => (
                               <SelectItem key={doc.id || doc.name} value={doc.name || doc.id}>
                                 {doc.name}
                               </SelectItem>
                             ))
                           ) : (
-                            <>
-                              <SelectItem value="Dr. Ahmad Khan">Dr. Ahmad Khan</SelectItem>
-                              <SelectItem value="Dr. Sara Ali">Dr. Sara Ali</SelectItem>
-                              <SelectItem value="Dr. Usman Malik">Dr. Usman Malik</SelectItem>
-                            </>
+                            <SelectItem value="" disabled>Select a doctor first</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
@@ -676,17 +672,14 @@ const EntriesPage: React.FC = () => {
                           <SelectValue placeholder="Select doctor" />
                         </SelectTrigger>
                         <SelectContent>
-                          {doctors.length > 0 ? (
+                          {doctors && doctors.length > 0 ? (
                             doctors.map((doc: any) => (
                               <SelectItem key={doc._id || doc.id} value={doc._id || doc.id}>
                                 {doc.name}
                               </SelectItem>
                             ))
                           ) : (
-                            <>
-                              <SelectItem value="dr-ahmad">Dr. Ahmad Khan</SelectItem>
-                              <SelectItem value="dr-fatima">Dr. Fatima Bibi</SelectItem>
-                            </>
+                            <SelectItem value="" disabled>Select a doctor first</SelectItem>
                           )}
                         </SelectContent>
                       </Select>

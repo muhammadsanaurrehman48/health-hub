@@ -219,6 +219,12 @@ class ApiClient {
     });
   }
 
+  async assignTokenToAppointment(appointmentId) {
+    return this.request(`/appointments/${appointmentId}/assign-token`, {
+      method: 'POST',
+    });
+  }
+
   // Referral endpoints
   async getReferrals() {
     return this.request('/referrals');
@@ -409,6 +415,29 @@ class ApiClient {
     });
   }
 
+  async getLowStockAlerts() {
+    return this.request('/inventory/alerts/low-stock');
+  }
+
+  async getExpiringAlerts() {
+    return this.request('/inventory/alerts/expiring');
+  }
+
+  async getAlertsummary() {
+    return this.request('/inventory/alerts/summary');
+  }
+
+  async markForDisposal(itemId, reason) {
+    return this.request(`/inventory/mark-disposal/${itemId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async getReportAnalytics() {
+    return this.request('/inventory/report/analytics');
+  }
+
   // Admin endpoints
   async getAdminStats() {
     return this.request('/admin/stats');
@@ -524,8 +553,8 @@ class ApiClient {
     });
   }
 
-  async updateCurrentToken(departmentId, tokenNo) {
-    return this.request(`/queue/${departmentId}/current-token`, {
+  async updateCurrentToken(roomNo, tokenNo) {
+    return this.request(`/queue/${roomNo}/current-token`, {
       method: 'PUT',
       body: JSON.stringify({ tokenNo }),
     });
@@ -555,6 +584,37 @@ class ApiClient {
     return this.request(`/vitals/${vitalId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  // Notifications endpoints
+  async getNotifications(page = 1, limit = 10, read = null) {
+    const params = new URLSearchParams({ page, limit });
+    if (read !== null) {
+      params.append('read', read);
+    }
+    return this.request(`/notifications?${params.toString()}`);
+  }
+
+  async getUnreadNotificationCount() {
+    return this.request('/notifications/count/unread');
+  }
+
+  async markNotificationAsRead(notificationId) {
+    return this.request(`/notifications/${notificationId}/read`, {
+      method: 'PUT',
+    });
+  }
+
+  async markAllNotificationsAsRead() {
+    return this.request('/notifications/read-all', {
+      method: 'PUT',
+    });
+  }
+
+  async deleteNotification(notificationId) {
+    return this.request(`/notifications/${notificationId}`, {
+      method: 'DELETE',
     });
   }
 }

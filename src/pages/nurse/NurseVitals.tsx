@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,6 +31,9 @@ import {
 } from 'lucide-react';
 
 const NurseVitals: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const appointmentId = searchParams.get('appointmentId');
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   
@@ -48,28 +52,46 @@ const NurseVitals: React.FC = () => {
   const [respiratoryRate, setRespiratoryRate] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Fetch data
+  // Fetch data - Get OPD appointments waiting for vitals
   const fetchData = useCallback(async (showRefresh = false) => {
     try {
       if (showRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const patientsRes = await api.getAdmittedPatients().catch(() => ({ success: false, data: [] }));
+      // Fetch scheduled appointments (OPD patients waiting for vitals)
+      const appointmentsRes = await api.getAppointments().catch(() => ({ success: false, data: [] }));
 
-      if (patientsRes.success && patientsRes.data) {
-        const patientList = (Array.isArray(patientsRes.data) ? patientsRes.data : []).map((p: any) => ({
-          id: p._id || p.id,
-          name: p.name || p.patientName || 'Unknown',
-          mrNo: p.mrNo || p.patientNo || '',
-          ward: p.ward || 'General Ward',
-          bed: p.bed || 'Unassigned',
-          admitDate: p.admitDate ? new Date(p.admitDate).toISOString().split('T')[0] : '',
-          doctor: p.doctor?.name || p.doctorName || 'Assigned Doctor',
-        }));
-        setPatients(patientList);
+      if (appointmentsRes.success && appointmentsRes.data) {
+        // Filter only scheduled appointments (waiting for consultation/vitals) — exclude vitals_recorded
+        const scheduledAppointments = (Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [])
+          .filter((apt: any) => apt.status === 'scheduled' || apt.status === 'waiting')
+          .map((apt: any) => {
+            // Extract ID from patientId (could be string or object)
+            let patientIdValue = apt.patientId;
+            if (typeof patientIdValue === 'object' && patientIdValue?._id) {
+              patientIdValue = patientIdValue._id; // Extract just the ID if it's populated
+            }
+            
+            return {
+              id: patientIdValue, // Use just the ID string
+              appointmentId: apt.id || apt._id,
+              name: apt.patientName || 'Unknown',
+              mrNo: apt.mrNo || apt.patientNo || '',
+              ward: 'OPD',
+              bed: `Room ${apt.roomNo}`,
+              admitDate: apt.date ? new Date(apt.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              doctor: apt.doctor || apt.doctorName || 'Assigned Doctor',
+              roomNo: apt.roomNo,
+              token: apt.token || 'N/A',
+              appointmentNo: apt.appointmentNo,
+            };
+          });
+        
+        console.log('🏥 [NURSE] Loaded', scheduledAppointments.length, 'OPD appointments waiting for vitals');
+        setPatients(scheduledAppointments);
       }
     } catch (error) {
-      console.error('Error fetching patients:', error);
+      console.error('Error fetching appointments:', error);
       toast.error('Failed to load patients');
     } finally {
       setLoading(false);
@@ -103,9 +125,49 @@ const NurseVitals: React.FC = () => {
 
   useEffect(() => {
     if (selectedPatient?.id) {
-      fetchVitalsHistory(selectedPatient.id);
+      // Ensure patientId is a string before fetching
+      let pid = selectedPatient.id;
+      if (typeof pid === 'object' && pid !== null) {
+        pid = pid._id || pid.id || String(pid);
+      }
+      fetchVitalsHistory(pid);
     }
   }, [selectedPatient, fetchVitalsHistory]);
+
+  // Handle appointment ID parameter from dashboard
+  useEffect(() => {
+    if (appointmentId && patients.length > 0) {
+      const fetchAppointmentDetails = async () => {
+        try {
+          const response = await api.request(`/appointments/${appointmentId}`);
+          if (response.success && response.data) {
+            const apt = response.data;
+            // Extract patientId - could be string or populated object
+            let extractedPatientId = apt.patientId;
+            if (typeof extractedPatientId === 'object' && extractedPatientId !== null) {
+              extractedPatientId = extractedPatientId._id || extractedPatientId.id || String(extractedPatientId);
+            }
+            // Pre-select patient from appointment
+            const patient = patients.find(p => 
+              p.id === extractedPatientId || p.mrNo === apt.mrNo
+            ) || {
+              id: extractedPatientId,
+              name: apt.patientName || (apt.patientId?.firstName ? `${apt.patientId.firstName} ${apt.patientId.lastName}` : 'Unknown'),
+              mrNo: apt.mrNo || apt.patientNo || apt.patientId?.patientNo || '',
+              ward: 'OPD',
+              bed: 'Consultation',
+              doctor: apt.doctor || 'Assigned Doctor',
+            };
+            setSelectedPatient(patient);
+            console.log('✅ Auto-selected patient from appointment:', patient.name, 'ID:', patient.id);
+          }
+        } catch (error) {
+          console.error('Error fetching appointment details:', error);
+        }
+      };
+      fetchAppointmentDetails();
+    }
+  }, [appointmentId, patients]);
 
   const handleRefresh = () => fetchData(true);
 
@@ -116,8 +178,28 @@ const NurseVitals: React.FC = () => {
     }
     try {
       setSaving(true);
-      await api.recordVitals({
-        patientId: selectedPatient.id,
+      
+      // Get appointmentId from URL param OR from selectedPatient
+      const aptId = appointmentId || selectedPatient.appointmentId;
+      
+      // Ensure patientId is always a string
+      let patientIdStr = selectedPatient.id;
+      if (typeof patientIdStr === 'object' && patientIdStr !== null) {
+        patientIdStr = patientIdStr._id || patientIdStr.id || String(patientIdStr);
+      }
+      
+      console.log('📝 [NURSE] Saving vitals for patient:', {
+        patientId: patientIdStr,
+        appointmentId: aptId,
+        bloodPressure,
+        pulse,
+        temperature,
+        spo2,
+      });
+      
+      const response = await api.recordVitals({
+        patientId: patientIdStr,
+        appointmentId: aptId || undefined,
         bloodPressure,
         pulse: pulse ? parseInt(pulse) : undefined,
         temperature: temperature ? parseFloat(temperature) : undefined,
@@ -126,17 +208,29 @@ const NurseVitals: React.FC = () => {
         notes,
         recordedAt: new Date().toISOString(),
       });
-      toast.success(`Vitals recorded for ${selectedPatient.name}`);
+      
+      console.log('✅ [NURSE] Vitals saved successfully:', response);
+      toast.success(`Vitals recorded for ${selectedPatient.name}${aptId ? ' - Doctor notified' : ''}`);
+      
+      // Remove the patient from the pending list since vitals are now recorded
+      setPatients(prev => prev.filter(p => p.appointmentId !== aptId && p.id !== patientIdStr));
+      
+      // Clear form and selection
+      setSelectedPatient(null);
       setBloodPressure('');
       setPulse('');
       setTemperature('');
       setSpo2('');
       setRespiratoryRate('');
       setNotes('');
-      fetchVitalsHistory(selectedPatient.id); // Refresh history
-    } catch (error) {
-      console.error('Error saving vitals:', error);
-      toast.error('Failed to save vitals');
+      setVitalsHistory([]);
+    } catch (error: any) {
+      console.error('❌ [NURSE] Error saving vitals:', error);
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response);
+      
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to save vitals';
+      toast.error(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -175,7 +269,7 @@ const NurseVitals: React.FC = () => {
           {/* Patient List */}
           <Card className="lg:col-span-1">
             <CardHeader>
-              <CardTitle className="text-lg">Admitted Patients</CardTitle>
+              <CardTitle className="text-lg">OPD Appointments</CardTitle>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -188,7 +282,7 @@ const NurseVitals: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-2">
               {filteredPatients.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">No patients found</p>
+                <p className="text-center text-muted-foreground py-4">No patients with scheduled appointments</p>
               ) : (
                 filteredPatients.map((patient) => (
                   <div
@@ -204,14 +298,17 @@ const NurseVitals: React.FC = () => {
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                         <User className="w-5 h-5 text-primary" />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">{patient.name}</p>
                         <p className="text-xs text-muted-foreground">{patient.mrNo}</p>
                       </div>
+                      {patient.token && patient.token !== 'N/A' && (
+                        <Badge className="bg-blue-600 text-white font-mono">{patient.token}</Badge>
+                      )}
                     </div>
                     <div className="mt-2 flex gap-2">
-                      <Badge variant="outline" className="text-xs">{patient.ward}</Badge>
-                      <Badge variant="outline" className="text-xs">Bed: {patient.bed}</Badge>
+                      <Badge variant="outline" className="text-xs">{patient.bed}</Badge>
+                      <Badge variant="secondary" className="text-xs">{patient.doctor}</Badge>
                     </div>
                   </div>
                 ))
@@ -236,12 +333,14 @@ const NurseVitals: React.FC = () => {
                       <div>
                         <p className="font-semibold text-lg">{selectedPatient.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {selectedPatient.mrNo} | {selectedPatient.ward} - Bed {selectedPatient.bed}
+                          MR: {selectedPatient.mrNo} | {selectedPatient.bed}
                         </p>
                       </div>
-                      <div className="text-right text-sm">
-                        <p className="text-muted-foreground">Attending Doctor</p>
-                        <p className="font-medium">{selectedPatient.doctor}</p>
+                      <div className="text-right">
+                        {selectedPatient.token && selectedPatient.token !== 'N/A' && (
+                          <Badge className="bg-blue-600 text-white font-mono text-lg px-3">{selectedPatient.token}</Badge>
+                        )}
+                        <p className="text-sm text-muted-foreground mt-1">{selectedPatient.doctor}</p>
                       </div>
                     </div>
                   </div>

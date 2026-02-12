@@ -44,7 +44,7 @@ interface QueuePatient {
   age?: number;
   gender?: string;
   complaint?: string;
-  status: 'waiting' | 'serving' | 'completed' | 'skipped';
+  status: 'waiting' | 'vitals_recorded' | 'serving' | 'completed' | 'skipped';
   position: number;
 }
 
@@ -172,7 +172,12 @@ const DoctorAppointments: React.FC = () => {
 
   const handleStartConsultation = (patient: QueuePatient) => {
     navigate(`/doctor/consultation/${patient.forceNo}`, { 
-      state: { patient, room: selectedRoom } 
+      state: { 
+        patient, 
+        room: selectedRoom,
+        appointmentId: (patient as any).appointmentId,
+        id: (patient as any).appointmentId,
+      } 
     });
   };
 
@@ -195,6 +200,7 @@ const DoctorAppointments: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       waiting: 'bg-warning text-warning-foreground',
+      vitals_recorded: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       serving: 'bg-primary text-primary-foreground',
       completed: 'bg-success text-success-foreground',
       skipped: 'bg-destructive text-destructive-foreground',
@@ -416,6 +422,25 @@ const DoctorAppointments: React.FC = () => {
                                   >
                                     <PlayCircle className="w-4 h-4" />
                                     Start
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleCompleteAppointment(patient.forceNo || '')}
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                              {patient.status === 'vitals_recorded' && (
+                                <>
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => handleStartConsultation(patient)}
+                                    className="gap-1 bg-blue-600 hover:bg-blue-700"
+                                  >
+                                    <PlayCircle className="w-4 h-4" />
+                                    Consult (Vitals Ready)
                                   </Button>
                                   <Button 
                                     variant="outline" 

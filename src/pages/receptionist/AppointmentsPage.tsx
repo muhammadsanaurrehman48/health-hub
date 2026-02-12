@@ -52,7 +52,6 @@ const AppointmentsPage: React.FC = () => {
   // New appointment form
   const [newPatientName, setNewPatientName] = useState('');
   const [newDoctor, setNewDoctor] = useState('');
-  const [newTime, setNewTime] = useState('');
   const [newRoomNo, setNewRoomNo] = useState('');
 
   useEffect(() => {
@@ -143,6 +142,51 @@ const AppointmentsPage: React.FC = () => {
     }
   };
 
+  const handleUpdateAppointmentStatus = async (appointmentId: string, newStatus: 'completed' | 'cancelled') => {
+    try {
+      console.log(`📋 Updating appointment ${appointmentId} status to ${newStatus}...`);
+      
+      const response = await api.updateAppointment(appointmentId, { status: newStatus });
+      
+      if (response?.success) {
+        toast.success(`Appointment marked as ${newStatus}`, {
+          description: `Doctor slot has been ${newStatus === 'completed' ? 'released' : 'released'} for rescheduling`,
+        });
+        
+        // Refresh data to show updated slots and status
+        console.log('🔄 Refreshing appointments and doctor slots after status change...');
+        const [appointmentsRes, doctorsRes] = await Promise.all([
+          api.getAppointments(),
+          api.getDoctors()
+        ]);
+        
+        if (appointmentsRes?.success) {
+          setAppointments(appointmentsRes.data || []);
+          console.log('✅ Appointments refreshed');
+        }
+        
+        if (doctorsRes?.success) {
+          const formattedDoctors = (doctorsRes.data || []).map((doc: any) => ({
+            id: doc.id || doc._id,
+            name: doc.name,
+            department: doc.department || 'OPD',
+            slots: doc.slots || 0,
+            max_slots: doc.max_slots || 10,
+          }));
+          setDoctors(formattedDoctors);
+          console.log('✅ Doctors slots refreshed');
+        }
+      } else {
+        toast.error(`Failed to update appointment: ${response?.message}`);
+        console.error('❌ Update failed:', response);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      toast.error('Error updating appointment', { description: errorMsg });
+      console.error('❌ Exception:', error);
+    }
+  };
+
   const handleCreateAppointment = async () => {
     if (!newPatientName) {
       toast.error('Patient is required');
@@ -150,10 +194,6 @@ const AppointmentsPage: React.FC = () => {
     }
     if (!newDoctor) {
       toast.error('Doctor is required');
-      return;
-    }
-    if (!newTime) {
-      toast.error('Time is required');
       return;
     }
     if (!newRoomNo) {
@@ -175,7 +215,7 @@ const AppointmentsPage: React.FC = () => {
       const availableSlots = selectedDoctor.slots || 0;
       if (availableSlots <= 0) {
         toast.error(`${selectedDoctor.name} has no available slots`, {
-          description: `Please select another doctor or time slot.`,
+          description: `Please select another doctor or another day.`,
         });
         return;
       }
@@ -185,7 +225,6 @@ const AppointmentsPage: React.FC = () => {
         doctorId: selectedDoctor.id || selectedDoctor._id,
         roomNo: newRoomNo,
         date: format(selectedDate, 'yyyy-MM-dd'),
-        time: newTime,
         reason: 'Consultation',
       };
 
@@ -200,35 +239,55 @@ const AppointmentsPage: React.FC = () => {
       
       if (response?.success) {
         toast.success('Appointment scheduled successfully!', {
-          description: `Room ${newRoomNo} | Dr. ${selectedDoctor.name}`,
+          description: `Room ${newRoomNo} | Dr. ${selectedDoctor.name} | Token: ${response.data?.token || 'Generated'}`,
         });
         
         // Clear form
         setIsDialogOpen(false);
         setNewPatientName('');
         setNewDoctor('');
-        setNewTime('');
         setNewRoomNo('');
         
-        // Refresh appointments from database immediately
-        console.log('🔄 Refreshing appointments from database...');
-        const appointmentsRes = await api.getAppointments();
+        // Refresh both appointments AND doctors list to show updated slots
+        console.log('🔄 Refreshing appointments and doctor slots...');
+        const [appointmentsRes, doctorsRes] = await Promise.all([
+          api.getAppointments(),
+          api.getDoctors()
+        ]);
+        
         console.log('📥 Fresh appointments from database:', appointmentsRes?.data?.length, 'appointments');
+        console.log('👨‍⚕️ Fresh doctors data with updated slots:', doctorsRes?.data?.length, 'doctors');
+        
         if (appointmentsRes?.success) {
           setAppointments(appointmentsRes.data || []);
           console.log('✅ Appointments state updated');
         }
+        
+        if (doctorsRes?.success) {
+          const formattedDoctors = (doctorsRes.data || []).map((doc: any) => ({
+            id: doc.id || doc._id,
+            name: doc.name,
+            department: doc.department || 'OPD',
+            slots: doc.slots || 0,
+            max_slots: doc.max_slots || 10,
+          }));
+          setDoctors(formattedDoctors);
+          console.log('✅ Doctors state updated with current slots');
+        }
       } else {
+        const errorMsg = response?.message || 'Unknown error';
+        console.error('❌ API Response:', response);
         toast.error('Failed to schedule appointment', {
-          description: response?.message || 'Unknown error',
+          description: errorMsg,
         });
-        console.error('❌ Appointment creation failed:', response?.message);
+        console.error('❌ Appointment creation failed:', errorMsg);
       }
     } catch (error) {
-      console.error('Error creating appointment:', error);
-      toast.error('Failed to schedule appointment', {
-        description: error instanceof Error ? error.message : 'Unknown error',
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      toast.error('Error creating appointment', {
+        description: errorMsg,
       });
+      console.error('❌ Exception during appointment creation:', error);
     }
   };
 
@@ -380,21 +439,6 @@ const AppointmentsPage: React.FC = () => {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="space-y-2">
-                  <Label>Time <span className="text-destructive">*</span></Label>
-                  <Select value={newTime} onValueChange={setNewTime}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM'].map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -463,7 +507,7 @@ const AppointmentsPage: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Time</TableHead>
+                  <TableHead>Token</TableHead>
                   <TableHead>Patient</TableHead>
                   <TableHead>MR No</TableHead>
                   <TableHead>Doctor</TableHead>
@@ -490,10 +534,7 @@ const AppointmentsPage: React.FC = () => {
                     return (
                       <TableRow key={apt.id || apt._id}>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-muted-foreground" />
-                            {apt.time}
-                          </div>
+                          <Badge className="font-mono bg-blue-100 text-blue-900">{apt.token || 'N/A'}</Badge>
                         </TableCell>
                         <TableCell className="font-medium">{patientName}</TableCell>
                         <TableCell>{mrNo}</TableCell>
@@ -506,10 +547,20 @@ const AppointmentsPage: React.FC = () => {
                           <div className="flex justify-end gap-2">
                             {apt.status === 'scheduled' && (
                               <>
-                                <Button variant="ghost" size="icon" title="Mark Complete">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="Mark Complete"
+                                  onClick={() => handleUpdateAppointmentStatus(apt.id || apt._id, 'completed')}
+                                >
                                   <CheckCircle className="w-4 h-4 text-success" />
                                 </Button>
-                                <Button variant="ghost" size="icon" title="Cancel">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="Cancel"
+                                  onClick={() => handleUpdateAppointmentStatus(apt.id || apt._id, 'cancelled')}
+                                >
                                   <XCircle className="w-4 h-4 text-destructive" />
                                 </Button>
                               </>
