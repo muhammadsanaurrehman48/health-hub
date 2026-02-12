@@ -147,14 +147,19 @@ const DoctorPatientHistory: React.FC = () => {
       // Add prescriptions to history
       if (prescRes.success && prescRes.data) {
         prescRes.data.forEach((p: any) => {
+          const doctorName = p.doctorId?.name || p.doctor?.name || p.doctor || 'Doctor';
           history.push({
             id: p._id,
-            date: p.date || p.createdAt?.split('T')[0],
+            date: p.createdAt ? p.createdAt.split('T')[0] : (p.date || '-'),
             type: 'OPD Visit',
-            doctor: p.doctor?.name || 'Doctor',
+            doctor: doctorName,
             diagnosis: p.diagnosis || '-',
             prescription: p.rxNo || '-',
+            medicines: p.medicines || [],
+            labTests: p.labTests || [],
+            radiologyTests: p.radiologyTests || [],
             notes: p.notes || '-',
+            status: p.status || 'pending',
           });
         });
       }
@@ -459,40 +464,162 @@ const DoctorPatientHistory: React.FC = () => {
 
               <TabsContent value="visits">
                 <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-center text-muted-foreground py-8">
-                      Showing OPD visits only
-                    </p>
+                  <CardHeader><CardTitle>OPD Visits</CardTitle></CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                    ) : patientHistory.filter(r => r.type === 'OPD Visit').length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Doctor</TableHead>
+                          <TableHead>Diagnosis</TableHead>
+                          <TableHead>Rx No</TableHead>
+                          <TableHead>Medicines</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {patientHistory.filter(r => r.type === 'OPD Visit').map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell>{record.date}</TableCell>
+                            <TableCell>{record.doctor}</TableCell>
+                            <TableCell className="font-medium">{record.diagnosis}</TableCell>
+                            <TableCell className="text-primary font-semibold">{record.prescription}</TableCell>
+                            <TableCell>
+                              {record.medicines?.length > 0 ? (
+                                <div className="text-sm">
+                                  {record.medicines.map((m: any, i: number) => (
+                                    <span key={i}>{m.name}{m.dosage ? ` (${m.dosage})` : ''}{i < record.medicines.length - 1 ? ', ' : ''}</span>
+                                  ))}
+                                </div>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell><Badge variant="outline">{record.status}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No OPD visits found</p>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
 
               <TabsContent value="lab">
                 <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-center text-muted-foreground py-8">
-                      Showing lab reports only
-                    </p>
+                  <CardHeader><CardTitle>Lab Reports</CardTitle></CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                    ) : patientHistory.filter(r => r.type === 'Lab Report').length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Test</TableHead>
+                          <TableHead>Doctor</TableHead>
+                          <TableHead>Result / Notes</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {patientHistory.filter(r => r.type === 'Lab Report').map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell>{record.date}</TableCell>
+                            <TableCell className="font-medium">{record.diagnosis}</TableCell>
+                            <TableCell>{record.doctor}</TableCell>
+                            <TableCell>{record.notes}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No lab reports found</p>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
 
               <TabsContent value="radiology">
                 <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-center text-muted-foreground py-8">
-                      Showing radiology reports only
-                    </p>
+                  <CardHeader><CardTitle>Radiology Reports</CardTitle></CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                    ) : patientHistory.filter(r => r.type === 'Radiology').length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Test</TableHead>
+                          <TableHead>Doctor</TableHead>
+                          <TableHead>Findings</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {patientHistory.filter(r => r.type === 'Radiology').map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell>{record.date}</TableCell>
+                            <TableCell className="font-medium">{record.diagnosis}</TableCell>
+                            <TableCell>{record.doctor}</TableCell>
+                            <TableCell>{record.notes}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No radiology reports found</p>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
 
               <TabsContent value="prescriptions">
                 <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-center text-muted-foreground py-8">
-                      Showing prescriptions only
-                    </p>
+                  <CardHeader><CardTitle>Prescriptions</CardTitle></CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                    ) : patientHistory.filter(r => r.type === 'OPD Visit').length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Rx No</TableHead>
+                          <TableHead>Doctor</TableHead>
+                          <TableHead>Diagnosis</TableHead>
+                          <TableHead>Medicines</TableHead>
+                          <TableHead>Lab Tests</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {patientHistory.filter(r => r.type === 'OPD Visit').map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell>{record.date}</TableCell>
+                            <TableCell className="text-primary font-semibold">{record.prescription}</TableCell>
+                            <TableCell>{record.doctor}</TableCell>
+                            <TableCell className="font-medium">{record.diagnosis}</TableCell>
+                            <TableCell>
+                              {record.medicines?.length > 0 ? (
+                                <Badge variant="outline">{record.medicines.length} items</Badge>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {record.labTests?.length > 0 ? (
+                                <Badge variant="outline">{record.labTests.join(', ')}</Badge>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell><Badge variant="outline">{record.status}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No prescriptions found</p>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

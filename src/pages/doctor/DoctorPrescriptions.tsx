@@ -84,9 +84,9 @@ const DoctorPrescriptions: React.FC = () => {
         const rxList = (Array.isArray(rxRes.data) ? rxRes.data : []).map((rx: any) => ({
           id: rx._id || rx.id,
           rxNo: rx.prescriptionNo || rx.rxNo || `RX-${String(rx._id).slice(-6)}`,
-          patientName: rx.patient?.name || rx.patientName || 'Unknown',
-          mrNo: rx.patient?.mrNo || rx.mrNo || '',
-          date: rx.date ? new Date(rx.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          patientName: rx.patientName || rx.patient || 'Unknown',
+          mrNo: rx.mrNo || rx.patient?.mrNo || '',
+          date: rx.createdAt ? new Date(rx.createdAt).toISOString().split('T')[0] : (rx.date ? new Date(rx.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
           diagnosis: rx.diagnosis || 'N/A',
           medicines: rx.medicines?.length || 0,
           status: rx.status || 'pending',
@@ -126,6 +126,7 @@ const DoctorPrescriptions: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'dispensed':
       case 'completed':
         return (
           <Badge className="bg-success text-success-foreground">

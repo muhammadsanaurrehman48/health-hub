@@ -305,9 +305,10 @@ class ApiClient {
     return this.request('/pharmacy/inventory');
   }
 
-  async dispensePrescription(prescriptionId) {
+  async dispensePrescription(prescriptionId, data = {}) {
     return this.request(`/pharmacy/dispense/${prescriptionId}`, {
       method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 

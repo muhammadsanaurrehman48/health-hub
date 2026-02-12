@@ -19,20 +19,25 @@ import {
 const PharmacyDashboard: React.FC = () => {
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [lowStockItems, setLowStockItems] = useState<any[]>([]);
+  const [totalMedicines, setTotalMedicines] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [prescriptionsRes, lowStockRes] = await Promise.all([
+        const [prescriptionsRes, lowStockRes, inventoryRes] = await Promise.all([
           api.getPharmacyPrescriptions(),
-          api.getLowStockItems()
+          api.getLowStockItems().catch(() => ({ success: false, data: [] })),
+          api.getPharmacyInventory().catch(() => ({ success: false, data: [] })),
         ]);
         if (prescriptionsRes.success) {
           setPrescriptions(prescriptionsRes.data);
         }
         if (lowStockRes.success) {
-          setLowStockItems(lowStockRes.data);
+          setLowStockItems(Array.isArray(lowStockRes.data) ? lowStockRes.data : []);
+        }
+        if (inventoryRes.success && Array.isArray(inventoryRes.data)) {
+          setTotalMedicines(inventoryRes.data.length);
         }
       } catch (error) {
         console.error('Error fetching pharmacy data:', error);
@@ -44,11 +49,16 @@ const PharmacyDashboard: React.FC = () => {
   }, []);
 
   const pendingPrescriptions = prescriptions.filter(p => p.status === 'pending');
-  const dispensedToday = prescriptions.filter(p => p.status === 'dispensed').length;
+  const today = new Date().toLocaleDateString();
+  const dispensedToday = prescriptions.filter(p => {
+    if (p.status !== 'dispensed') return false;
+    const rxDate = p.dispensedAt ? new Date(p.dispensedAt).toLocaleDateString() : (p.date || '');
+    return rxDate === today;
+  }).length;
   const activities = prescriptions.slice(0, 4).map((rx, idx) => ({
     id: String(idx + 1),
     title: rx.status === 'dispensed' ? 'Prescription Dispensed' : 'New Prescription',
-    description: `${rx.rxNo || 'Rx'} - ${rx.medicines || 0} medicines`,
+    description: `${rx.rxNo || 'Rx'} - ${Array.isArray(rx.medicines) ? rx.medicines.length : 0} medicines`,
     time: rx.date || 'Recently',
     status: rx.status === 'dispensed' ? 'completed' : 'pending'
   }));
@@ -91,7 +101,7 @@ const PharmacyDashboard: React.FC = () => {
           />
           <StatCard
             title="Total Medicines"
-            value={prescriptions.reduce((sum, p) => sum + (p.medicines || 0), 0)}
+            value={totalMedicines}
             subtitle="In inventory"
             icon={Pill}
             variant="primary"
@@ -138,7 +148,7 @@ const PharmacyDashboard: React.FC = () => {
                 <div key={rx.id || i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                   <div>
                     <p className="text-sm font-medium">{rx.patientName}</p>
-                    <p className="text-xs text-muted-foreground">{rx.rxNo} • {rx.medicines || 0} medicines</p>
+                    <p className="text-xs text-muted-foreground">{rx.rxNo} • {Array.isArray(rx.medicines) ? rx.medicines.length : 0} medicines</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">{rx.doctor}</p>
@@ -160,7 +170,7 @@ const PharmacyDashboard: React.FC = () => {
                     <p className="text-sm font-medium">{item.name}</p>
                     <p className="text-xs text-muted-foreground">Min stock: {item.minStock || item.min}</p>
                   </div>
-                  <span className="badge-cancelled">{item.stock} left</span>
+                  <span className="badge-cancelled">{item.quantity ?? item.stock ?? 0} left</span>
                 </div>
               ))}
               {lowStockItems.length === 0 && (

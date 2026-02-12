@@ -229,20 +229,114 @@ const ConsultationPage: React.FC = () => {
     toast.success('Consultation saved successfully!');
   };
 
+  const [completing, setCompleting] = useState(false);
+
   const handleComplete = async () => {
+    console.log('🚀 [DOCTOR] handleComplete called. location.state:', JSON.stringify(location.state, null, 2));
     const appointmentId = location.state?.appointmentId || location.state?.id;
+    
+    // Extract patientId robustly from multiple sources
+    let patientId: string | undefined;
+    
+    // Source 1: Direct from patient object in state
+    const rawPatientId = location.state?.patient?.patientId;
+    if (rawPatientId) {
+      if (typeof rawPatientId === 'string') {
+        patientId = rawPatientId;
+      } else if (typeof rawPatientId === 'object') {
+        patientId = rawPatientId._id?.toString() || rawPatientId.id?.toString() || undefined;
+      }
+    }
+    
+    // Source 2: From patient._id directly
+    if (!patientId && location.state?.patient?._id) {
+      patientId = location.state.patient._id.toString();
+    }
+    
+    // Source 3: Fetch from appointment if still not found
+    if (!patientId && appointmentId) {
+      try {
+        const aptRes = await api.request(`/appointments/${appointmentId}`);
+        if (aptRes.success && aptRes.data) {
+          const aptPatientId = aptRes.data.patientId;
+          if (typeof aptPatientId === 'string') {
+            patientId = aptPatientId;
+          } else if (typeof aptPatientId === 'object' && aptPatientId) {
+            patientId = aptPatientId._id?.toString() || aptPatientId.id?.toString();
+          }
+        }
+      } catch (e) {
+        console.error('⚠️ [DOCTOR] Could not fetch appointment for patientId:', e);
+      }
+    }
+    
+    console.log('🔍 [DOCTOR] Resolved patientId:', patientId, '| appointmentId:', appointmentId);
+    
+    if (!patientId) {
+      toast.error('Could not identify the patient. Please go back and try again.');
+      return;
+    }
+    
+    if (!diagnosis) {
+      toast.error('Please enter a diagnosis before completing');
+      return;
+    }
+    
     try {
+      setCompleting(true);
+
+      // 1. Save prescription to database
+      const prescriptionPayload = {
+        patientId,
+        appointmentId: appointmentId || undefined,
+        mrNo: patient.patientNo || patient.mrNo || patient.patientId?.patientNo || '',
+        forceNo: patient.forceNo || patient.patientId?.forceNo || '',
+        diagnosis,
+        medicines: medicines.map(m => ({
+          name: m.name,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          duration: m.duration,
+          instructions: m.instructions,
+        })),
+        labTests: selectedLabTests,
+        radiologyTests: selectedRadiologyTests,
+        notes: notes || '',
+      };
+
+      console.log('📝 [DOCTOR] Saving prescription:', prescriptionPayload);
+      const rxRes = await api.createPrescription(prescriptionPayload);
+      
+      if (rxRes.success) {
+        console.log('✅ [DOCTOR] Prescription saved:', rxRes.data?.rxNo || rxRes.data?.id);
+      } else {
+        console.error('❌ [DOCTOR] Failed to save prescription:', rxRes.message);
+        toast.error(rxRes.message || 'Failed to save prescription');
+        return;
+      }
+
+      // 2. Mark appointment as completed
       if (appointmentId) {
         await api.updateAppointment(appointmentId, { status: 'completed' });
         console.log('✅ [DOCTOR] Appointment marked as completed:', appointmentId);
       }
+
+      // Build description based on what was prescribed
+      const parts = [];
+      if (medicines.length > 0) parts.push('Prescription sent to Pharmacy');
+      if (selectedLabTests.length > 0) parts.push('Lab requests sent to Laboratory');
+      if (selectedRadiologyTests.length > 0) parts.push('Radiology requests sent');
+      if (parts.length === 0) parts.push('Consultation recorded');
+      
       toast.success('Consultation completed!', {
-        description: 'Prescription sent to Pharmacy. Lab requests sent to Laboratory.',
+        description: parts.join('. ') + '.',
       });
       navigate('/doctor/appointments');
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [DOCTOR] Error completing consultation:', error);
-      toast.error('Failed to complete consultation');
+      toast.error(error.message || 'Failed to complete consultation');
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -314,9 +408,9 @@ const ConsultationPage: React.FC = () => {
               <Printer className="w-4 h-4 mr-2" />
               Preview Rx
             </Button>
-            <Button onClick={handleComplete}>
-              <Send className="w-4 h-4 mr-2" />
-              Complete & Send
+            <Button onClick={handleComplete} disabled={completing}>
+              {completing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+              {completing ? 'Saving...' : 'Complete & Send'}
             </Button>
           </div>
         </div>

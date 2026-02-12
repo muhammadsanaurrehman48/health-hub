@@ -829,7 +829,7 @@ const BillingPage: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {invoices
-                        .filter((inv) => inv.status !== 'paid')
+                        .filter((inv) => inv.paymentStatus !== 'paid' && !inv.autoPayment)
                         .map((inv) => (
                           <SelectItem key={inv.invoiceNo} value={inv.invoiceNo}>
                             {inv.invoiceNo} - {inv.patient?.name || inv.patientName || 'N/A'} (Rs.{' '}

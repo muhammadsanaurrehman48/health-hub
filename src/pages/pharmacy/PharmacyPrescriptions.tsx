@@ -19,6 +19,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import PrescriptionTemplate from '@/components/templates/PrescriptionTemplate';
 import { toast } from 'sonner';
 import {
@@ -30,6 +38,9 @@ import {
   Package,
   Eye,
   Loader2,
+  AlertTriangle,
+  Minus,
+  Plus,
 } from 'lucide-react';
 
 const PharmacyPrescriptions: React.FC = () => {
@@ -39,20 +50,33 @@ const PharmacyPrescriptions: React.FC = () => {
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Dispense dialog state
+  const [isDispenseDialogOpen, setIsDispenseDialogOpen] = useState(false);
+  const [dispenseRx, setDispenseRx] = useState<any>(null);
+  const [dispenseItems, setDispenseItems] = useState<{ name: string; dosage: string; frequency: string; duration: string; quantity: number; availableStock: number; price: number }[]>([]);
+  const [dispensing, setDispensing] = useState(false);
+  const [inventory, setInventory] = useState<any[]>([]);
+
   useEffect(() => {
-    const fetchPrescriptions = async () => {
+    const fetchData = async () => {
       try {
-        const response = await api.getPharmacyPrescriptions();
-        if (response.success) {
-          setPrescriptions(response.data);
+        const [rxResponse, invResponse] = await Promise.all([
+          api.getPharmacyPrescriptions(),
+          api.getPharmacyInventory(),
+        ]);
+        if (rxResponse.success) {
+          setPrescriptions(rxResponse.data);
+        }
+        if (invResponse.success) {
+          setInventory(invResponse.data);
         }
       } catch (error) {
-        console.error('Error fetching prescriptions:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchPrescriptions();
+    fetchData();
   }, []);
 
   const getStatusBadge = (status: string) => {
@@ -66,12 +90,107 @@ const PharmacyPrescriptions: React.FC = () => {
     }
   };
 
-  const handleDispense = (rxNo: string) => {
-    toast.success(`Prescription ${rxNo} dispensed successfully!`);
+  // Open dispense dialog
+  const openDispenseDialog = (rx: any) => {
+    const medicines = rx.medicines || [];
+    const items = medicines.map((med: any) => {
+      // Find matching inventory item (case-insensitive)
+      const invItem = inventory.find(
+        (inv: any) => inv.name?.toLowerCase() === med.name?.toLowerCase()
+      );
+      return {
+        name: med.name || '',
+        dosage: med.dosage || '',
+        frequency: med.frequency || '',
+        duration: med.duration || '',
+        quantity: 1,
+        availableStock: invItem?.quantity ?? 0,
+        price: invItem?.price ?? 0,
+      };
+    });
+    setDispenseRx(rx);
+    setDispenseItems(items);
+    setIsDispenseDialogOpen(true);
+  };
+
+  // Update quantity for a specific medicine
+  const updateDispenseQty = (index: number, newQty: number) => {
+    setDispenseItems(prev => prev.map((item, i) =>
+      i === index ? { ...item, quantity: Math.max(0, Math.min(newQty, item.availableStock || 999)) } : item
+    ));
+  };
+
+  // Calculate dispense total
+  const dispenseTotal = dispenseItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  // Confirm dispense
+  const handleConfirmDispense = async () => {
+    if (!dispenseRx) return;
+    setDispensing(true);
+    try {
+      const response = await api.dispensePrescription(dispenseRx.id, {
+        dispensedItems: dispenseItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+        })),
+      });
+      if (response.success) {
+        // Update local state
+        setPrescriptions(prev => prev.map(p =>
+          p.id === dispenseRx.id ? { ...p, status: 'dispensed' } : p
+        ));
+        // Update local inventory
+        setInventory(prev => prev.map(inv => {
+          const dispensed = dispenseItems.find(d => d.name?.toLowerCase() === inv.name?.toLowerCase());
+          if (dispensed) {
+            return { ...inv, quantity: Math.max(0, inv.quantity - dispensed.quantity) };
+          }
+          return inv;
+        }));
+        toast.success(`Prescription ${dispenseRx.rxNo} dispensed!`, {
+          description: `Invoice sent to reception. Total: Rs. ${dispenseTotal.toLocaleString()}`,
+        });
+        setIsDispenseDialogOpen(false);
+        setDispenseRx(null);
+        setDispenseItems([]);
+      } else {
+        toast.error(response.message || 'Failed to dispense prescription');
+      }
+    } catch (error: any) {
+      console.error('Error dispensing:', error);
+      toast.error(error.message || 'Failed to dispense prescription');
+    } finally {
+      setDispensing(false);
+    }
   };
 
   const handleViewPrescription = (rx: typeof prescriptions[0]) => {
-    setSelectedRx(rx);
+    // Transform API data to PrescriptionTemplate format
+    const templateData = {
+      prescriptionNo: rx.rxNo || '',
+      date: rx.date || new Date(rx.createdAt).toLocaleDateString(),
+      patient: {
+        name: rx.patientName || rx.patient || 'Unknown',
+        patientNo: rx.mrNo || '',
+        forceNo: rx.forceNo || '',
+        age: rx.age || 0,
+        gender: rx.gender || '',
+        phone: rx.phone || '',
+      },
+      doctor: {
+        name: rx.doctor || 'Unknown',
+        specialization: rx.department || '',
+        qualification: '',
+        regNo: '',
+      },
+      diagnosis: rx.diagnosis || '',
+      medicines: rx.medicines || [],
+      labTests: rx.labTests || [],
+      radiologyTests: rx.radiologyTests || [],
+      notes: rx.notes || '',
+      followUpDate: rx.followUpDate || '',
+    };
+    setSelectedRx(templateData);
     setIsViewSheetOpen(true);
   };
 
@@ -136,7 +255,7 @@ const PharmacyPrescriptions: React.FC = () => {
                   <Pill className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{prescriptions.reduce((sum, r) => sum + (r.medicines || 0), 0)}</p>
+                  <p className="text-2xl font-bold">{prescriptions.reduce((sum, r) => sum + (Array.isArray(r.medicines) ? r.medicines.length : 0), 0)}</p>
                   <p className="text-sm text-muted-foreground">Total Medicines</p>
                 </div>
               </div>
@@ -190,7 +309,7 @@ const PharmacyPrescriptions: React.FC = () => {
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         {rx.status === 'pending' && (
-                          <Button size="sm" onClick={() => handleDispense(rx.rxNo)}>
+                          <Button size="sm" onClick={() => openDispenseDialog(rx)}>
                             <Package className="w-4 h-4 mr-1" />
                             Dispense
                           </Button>
@@ -222,6 +341,153 @@ const PharmacyPrescriptions: React.FC = () => {
             </div>
           </SheetContent>
         </Sheet>
+
+        {/* Dispense Dialog */}
+        <Dialog open={isDispenseDialogOpen} onOpenChange={(open) => {
+          if (!dispensing) {
+            setIsDispenseDialogOpen(open);
+            if (!open) {
+              setDispenseRx(null);
+              setDispenseItems([]);
+            }
+          }
+        }}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Dispense Prescription — {dispenseRx?.rxNo}
+              </DialogTitle>
+              <DialogDescription>
+                Patient: <strong>{dispenseRx?.patientName}</strong> | Doctor: {dispenseRx?.doctor}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Medicine items table */}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Medicine</TableHead>
+                    <TableHead>Dosage / Frequency</TableHead>
+                    <TableHead className="text-center">In Stock</TableHead>
+                    <TableHead className="text-center">Unit Price</TableHead>
+                    <TableHead className="text-center">Qty to Dispense</TableHead>
+                    <TableHead className="text-right">Subtotal</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dispenseItems.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          {item.duration && (
+                            <p className="text-xs text-muted-foreground">Duration: {item.duration}</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {item.dosage && <span>{item.dosage}</span>}
+                        {item.frequency && <span className="block text-muted-foreground">{item.frequency}</span>}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={item.availableStock <= 0 ? 'destructive' : item.availableStock <= 10 ? 'secondary' : 'outline'}>
+                          {item.availableStock}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center text-sm">
+                        Rs. {(item.price || 0).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => updateDispenseQty(index, item.quantity - 1)}
+                            disabled={item.quantity <= 0}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={item.availableStock || 999}
+                            value={item.quantity}
+                            onChange={(e) => updateDispenseQty(index, parseInt(e.target.value) || 0)}
+                            className="w-16 h-7 text-center text-sm"
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => updateDispenseQty(index, item.quantity + 1)}
+                            disabled={item.quantity >= (item.availableStock || 999)}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        {item.quantity > 0 && item.availableStock > 0 && item.quantity > item.availableStock && (
+                          <p className="text-xs text-destructive flex items-center gap-1 mt-1 justify-center">
+                            <AlertTriangle className="w-3 h-3" /> Exceeds stock
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        Rs. {((item.price || 0) * item.quantity).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Total Section */}
+              <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {dispenseItems.filter(i => i.quantity > 0).length} of {dispenseItems.length} medicines being dispensed
+                  </p>
+                  {dispenseItems.some(i => i.availableStock <= 0) && (
+                    <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                      <AlertTriangle className="w-3 h-3" /> Some medicines not found in inventory
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Invoice Total</p>
+                  <p className="text-2xl font-bold">Rs. {dispenseTotal.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsDispenseDialogOpen(false)}
+                disabled={dispensing}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmDispense}
+                disabled={dispensing || dispenseItems.every(i => i.quantity <= 0)}
+              >
+                {dispensing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Dispensing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Confirm Dispense
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

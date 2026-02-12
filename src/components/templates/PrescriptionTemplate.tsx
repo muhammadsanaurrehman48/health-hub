@@ -29,18 +29,18 @@ interface PrescriptionData {
     qualification: string;
     regNo: string;
   };
-  vitals: {
-    bloodPressure: string;
-    pulse: string;
-    temperature: string;
-    weight: string;
+  vitals?: {
+    bloodPressure?: string;
+    pulse?: string;
+    temperature?: string;
+    weight?: string;
   };
   diagnosis: string;
-  medicines: Medicine[];
-  labTests: string[];
-  radiologyTests: string[];
-  notes: string;
-  followUpDate: string;
+  medicines?: Medicine[];
+  labTests?: string[];
+  radiologyTests?: string[];
+  notes?: string;
+  followUpDate?: string;
 }
 
 interface PrescriptionTemplateProps {
@@ -113,24 +113,26 @@ const PrescriptionTemplate: React.FC<PrescriptionTemplateProps> = ({ data }) => 
           </div>
 
           {/* Vitals */}
+          {data.vitals && (
           <div className="grid grid-cols-4 gap-3 mb-6">
             <div className="bg-primary/5 p-3 rounded-lg text-center">
               <p className="text-xs text-muted-foreground">Blood Pressure</p>
-              <p className="font-semibold">{data.vitals.bloodPressure}</p>
+              <p className="font-semibold">{data.vitals.bloodPressure || 'N/A'}</p>
             </div>
             <div className="bg-primary/5 p-3 rounded-lg text-center">
               <p className="text-xs text-muted-foreground">Pulse</p>
-              <p className="font-semibold">{data.vitals.pulse}</p>
+              <p className="font-semibold">{data.vitals.pulse || 'N/A'}</p>
             </div>
             <div className="bg-primary/5 p-3 rounded-lg text-center">
               <p className="text-xs text-muted-foreground">Temperature</p>
-              <p className="font-semibold">{data.vitals.temperature}</p>
+              <p className="font-semibold">{data.vitals.temperature || 'N/A'}</p>
             </div>
             <div className="bg-primary/5 p-3 rounded-lg text-center">
               <p className="text-xs text-muted-foreground">Weight</p>
-              <p className="font-semibold">{data.vitals.weight}</p>
+              <p className="font-semibold">{data.vitals.weight || 'N/A'}</p>
             </div>
           </div>
+          )}
 
           {/* Diagnosis */}
           <div className="mb-6">
@@ -158,7 +160,7 @@ const PrescriptionTemplate: React.FC<PrescriptionTemplateProps> = ({ data }) => 
                 </tr>
               </thead>
               <tbody>
-                {data.medicines.map((medicine, index) => (
+                {(data.medicines || []).map((medicine, index) => (
                   <tr key={index} className="border-b border-dashed">
                     <td className="py-3">{index + 1}</td>
                     <td className="py-3 font-medium">{medicine.name}</td>
@@ -173,23 +175,23 @@ const PrescriptionTemplate: React.FC<PrescriptionTemplateProps> = ({ data }) => 
           </div>
 
           {/* Lab Tests & Radiology */}
-          {(data.labTests.length > 0 || data.radiologyTests.length > 0) && (
+          {((data.labTests?.length || 0) > 0 || (data.radiologyTests?.length || 0) > 0) && (
             <div className="grid grid-cols-2 gap-4 mb-6">
-              {data.labTests.length > 0 && (
+              {(data.labTests?.length || 0) > 0 && (
                 <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg">
                   <h4 className="font-semibold text-sm mb-2">LAB TESTS ADVISED</h4>
                   <ul className="list-disc list-inside space-y-1">
-                    {data.labTests.map((test, i) => (
+                    {(data.labTests || []).map((test, i) => (
                       <li key={i} className="text-sm">{test}</li>
                     ))}
                   </ul>
                 </div>
               )}
-              {data.radiologyTests.length > 0 && (
+              {(data.radiologyTests?.length || 0) > 0 && (
                 <div className="bg-purple-50 dark:bg-purple-950/20 p-4 rounded-lg">
                   <h4 className="font-semibold text-sm mb-2">RADIOLOGY TESTS ADVISED</h4>
                   <ul className="list-disc list-inside space-y-1">
-                    {data.radiologyTests.map((test, i) => (
+                    {(data.radiologyTests || []).map((test, i) => (
                       <li key={i} className="text-sm">{test}</li>
                     ))}
                   </ul>
