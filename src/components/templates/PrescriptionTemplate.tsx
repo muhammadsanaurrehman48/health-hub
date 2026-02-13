@@ -90,24 +90,15 @@ const PrescriptionTemplate: React.FC<PrescriptionTemplateProps> = ({ data }) => 
 
           <Separator className="my-4" />
 
-          {/* Patient & Doctor Info */}
-          <div className="grid grid-cols-2 gap-6 mb-6">
+          {/* Patient Info */}
+          <div className="mb-6">
             <div className="bg-muted/30 p-4 rounded-lg">
               <h3 className="font-semibold text-sm text-muted-foreground mb-2">PATIENT INFORMATION</h3>
               <div className="space-y-1">
                 <p className="font-semibold text-lg">{data.patient.name}</p>
-                <p className="text-sm">Force No: <span className="font-medium">{data.patient.forceNo}</span></p>
-                <p className="text-sm">{data.patient.gender}, {data.patient.age} years</p>
-                <p className="text-sm">Phone: {data.patient.phone}</p>
-              </div>
-            </div>
-            <div className="bg-muted/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-sm text-muted-foreground mb-2">DOCTOR INFORMATION</h3>
-              <div className="space-y-1">
-                <p className="font-semibold text-lg">{data.doctor.name}</p>
-                <p className="text-sm text-primary font-medium">{data.doctor.specialization}</p>
-                <p className="text-sm">{data.doctor.qualification}</p>
-                <p className="text-sm">Reg No: {data.doctor.regNo}</p>
+                <p className="text-sm">Force No: <span className="font-medium">{data.patient.forceNo || 'N/A'}</span></p>
+                <p className="text-sm">{data.patient.gender}, {data.patient.age && data.patient.age !== 0 ? `${data.patient.age} years` : 'Age N/A'}</p>
+                <p className="text-sm">Phone: {data.patient.phone || 'N/A'}</p>
               </div>
             </div>
           </div>

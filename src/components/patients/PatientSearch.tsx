@@ -186,7 +186,6 @@ const PatientSearch: React.FC = () => {
                     <TableHead>Blood Group</TableHead>
                     <TableHead>Last Visit</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -207,46 +206,7 @@ const PatientSearch: React.FC = () => {
                           <Badge variant="outline">{patient.bloodGroup}</Badge>
                         </TableCell>
                         <TableCell>{patient.lastVisit}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={patient.status === 'active' ? 'default' : 'secondary'}
-                            className={patient.status === 'active' ? 'bg-success text-success-foreground' : ''}
-                          >
-                            {patient.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="View Details"
-                              onClick={() => handleViewDetails(patient.id)}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Edit Patient"
-                              onClick={() => handleEditPatient(patient.id)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Book Appointment"
-                              onClick={() => handleBookAppointment(patient.id, patient.name)}
-                            >
-                              <Calendar className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" title="View History">
-                              <FileText className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                        <TableCell>\n                          <Badge\n                            variant={patient.status === 'active' ? 'default' : 'secondary'}\n                            className={patient.status === 'active' ? 'bg-success text-success-foreground' : ''}\n                          >\n                            {patient.status}\n                          </Badge>\n                        </TableCell>\n                      </TableRow>
                     ))
                   )}
                 </TableBody>

@@ -61,6 +61,18 @@ const availableTests = [
   'MRI Spine',
   'MRI Knee',
   'Echo Cardiogram',
+  'X-Ray Skull',
+  'X-Ray Pelvis',
+  'X-Ray Knee',
+  'X-Ray Shoulder',
+  'Ultrasound KUB',
+  'CT Scan Pelvis',
+  'MRI Shoulder',
+  'MRI Lumbar Spine',
+  'Doppler Ultrasound',
+  'Mammography',
+  'Bone Densitometry (DEXA)',
+  'Fluoroscopy',
 ];
 
 const DoctorRadiologyRequests: React.FC = () => {
@@ -87,7 +99,12 @@ const DoctorRadiologyRequests: React.FC = () => {
           setRadiologyRequests(radResponse.data || []);
         }
         if (patientResponse.success) {
-          setPatients(patientResponse.data || []);
+          const patientList = (Array.isArray(patientResponse.data) ? patientResponse.data : []).map((p: any) => ({
+            id: p._id || p.id,
+            mrNo: p.mrNo || p.patientNo || '',
+            name: p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name || 'Unknown',
+          }));
+          setPatients(patientList);
         }
       } catch (error) {
         console.error('Error fetching radiology data:', error);
@@ -118,15 +135,36 @@ const DoctorRadiologyRequests: React.FC = () => {
     );
   };
 
-  const handleRequestTests = () => {
+  const handleRequestTests = async () => {
     if (!selectedPatient || selectedTests.length === 0) {
       toast.error('Please select patient and at least one test');
       return;
     }
-    toast.success(`${selectedTests.length} radiology test(s) requested successfully!`);
-    setIsRequestDialogOpen(false);
-    setSelectedPatient('');
-    setSelectedTests([]);
+    try {
+      const patient = patients.find((p: any) => p.mrNo === selectedPatient || p.id === selectedPatient);
+      for (const test of selectedTests) {
+        await api.createRadiologyRequest({
+          patientId: patient?.id,
+          patientName: patient?.name || 'Unknown',
+          mrNo: selectedPatient,
+          testName: test,
+          requestDate: new Date().toISOString(),
+          status: 'pending',
+        });
+      }
+      toast.success(`${selectedTests.length} radiology test(s) requested successfully!`);
+      setIsRequestDialogOpen(false);
+      setSelectedPatient('');
+      setSelectedTests([]);
+      // Refresh the list
+      const radResponse = await api.getRadiologyRequests();
+      if (radResponse.success) {
+        setRadiologyRequests(radResponse.data || []);
+      }
+    } catch (error) {
+      console.error('Error requesting radiology tests:', error);
+      toast.error('Failed to request radiology tests');
+    }
   };
 
   const handleViewReport = (req: any) => {
@@ -284,11 +322,15 @@ const DoctorRadiologyRequests: React.FC = () => {
                     <SelectValue placeholder="Search patient by MR No" />
                   </SelectTrigger>
                   <SelectContent>
-                    {patients.map((p) => (
-                      <SelectItem key={p._id || p.mrNo} value={p.mrNo || p._id}>
-                        {p.name} - {p.mrNo || p.patientNo}
-                      </SelectItem>
-                    ))}
+                    {patients.length === 0 ? (
+                      <SelectItem value="" disabled>No patients found</SelectItem>
+                    ) : (
+                      patients.map((p: any) => (
+                        <SelectItem key={p.mrNo || p.id} value={p.mrNo}>
+                          {p.name} - {p.mrNo}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

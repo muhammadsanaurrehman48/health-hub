@@ -99,11 +99,11 @@ const DoctorPrescriptions: React.FC = () => {
         const patientList = (Array.isArray(patientsRes.data) ? patientsRes.data : []).map((p: any) => ({
           id: p._id || p.id,
           mrNo: p.mrNo || p.patientNo || `MR-${String(p._id).slice(-6)}`,
-          name: p.name || 'Unknown',
+          name: p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name || 'Unknown',
           forceNo: p.forceNo || '',
-          age: p.age || 0,
+          age: p.age || (p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0),
           gender: p.gender || 'Unknown',
-          phone: p.phone || '',
+          phone: p.phone || 'N/A',
         }));
         setPatients(patientList);
       }
@@ -205,9 +205,9 @@ const DoctorPrescriptions: React.FC = () => {
               name: fullRx.patient?.name || fullRx.patientName || patient?.name || rx.patientName,
               mrNo: fullRx.patient?.mrNo || fullRx.mrNo || patient?.mrNo || rx.mrNo,
               forceNo: fullRx.patient?.forceNo || patient?.forceNo || '',
-              age: fullRx.patient?.age || patient?.age || 0,
+              age: fullRx.patient?.age || patient?.age || (fullRx.patient?.dateOfBirth ? Math.floor((Date.now() - new Date(fullRx.patient.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0),
               gender: fullRx.patient?.gender || patient?.gender || 'Unknown',
-              phone: fullRx.patient?.phone || patient?.phone || '',
+              phone: fullRx.patient?.phone || patient?.phone || 'N/A',
             },
             doctor: fullRx.doctor || {
               name: 'Doctor',

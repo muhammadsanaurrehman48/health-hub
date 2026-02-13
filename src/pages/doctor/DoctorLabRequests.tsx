@@ -61,6 +61,21 @@ const availableTests = [
   'Thyroid Panel',
   'Urine Analysis',
   'Serum Electrolytes',
+  'Serum Uric Acid',
+  'Hepatitis B Surface Antigen',
+  'Hepatitis C Antibody',
+  'ESR (Erythrocyte Sedimentation Rate)',
+  'Blood Culture & Sensitivity',
+  'Coagulation Profile (PT/INR)',
+  'Vitamin D Level',
+  'Vitamin B12 Level',
+  'Dengue NS1 Antigen',
+  'Covid-19 PCR Test',
+  'Malaria Parasite (MP)',
+  'Widal Test',
+  'HIV Screening',
+  'Serum Creatinine',
+  'Blood Urea Nitrogen (BUN)',
 ];
 
 // Helper to format result - handles objects like {fev1, fvc, ratio}
@@ -123,7 +138,7 @@ const DoctorLabRequests: React.FC = () => {
         const patientList = (Array.isArray(patientsRes.data) ? patientsRes.data : []).map((p: any) => ({
           id: p._id || p.id,
           mrNo: p.mrNo || p.patientNo || `MR-${String(p._id).slice(-6)}`,
-          name: p.name || 'Unknown',
+          name: p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name || 'Unknown',
         }));
         setPatients(patientList);
       }

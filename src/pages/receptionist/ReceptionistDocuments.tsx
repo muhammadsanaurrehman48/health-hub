@@ -46,8 +46,32 @@ const ReceptionistDocuments: React.FC = () => {
         ]);
         
         if (prescRes.success) setPrescriptions(prescRes.data || []);
-        if (labRes.success) setLabRequests(labRes.data || []);
-        if (radRes.success) setRadiologyRequests(radRes.data || []);
+        if (labRes.success) {
+          const mapped = (labRes.data || []).map((l: any) => ({
+            ...l,
+            id: l._id || l.id,
+            labNo: l.requestNo || l.labNo || `LAB-${String(l._id || '').slice(-6)}`,
+            patientName: l.patient?.name || l.patientName || 'Unknown',
+            forceNo: l.patient?.forceNo || l.forceNo || '',
+            test: l.testName || l.test || 'Lab Test',
+            date: l.requestDate || l.date || l.createdAt,
+            status: l.status || 'pending',
+          }));
+          setLabRequests(mapped);
+        }
+        if (radRes.success) {
+          const mapped = (radRes.data || []).map((r: any) => ({
+            ...r,
+            id: r._id || r.id,
+            radNo: r.requestNo || r.radNo || `RAD-${String(r._id || '').slice(-6)}`,
+            patientName: r.patient?.name || r.patientName || 'Unknown',
+            forceNo: r.patient?.forceNo || r.forceNo || '',
+            test: r.testName || r.test || 'Radiology Test',
+            date: r.requestDate || r.date || r.createdAt,
+            status: r.status || 'pending',
+          }));
+          setRadiologyRequests(mapped);
+        }
         if (refRes.success) setReferrals(refRes.data || []);
       } catch (error) {
         console.error('Error fetching documents:', error);
@@ -386,21 +410,14 @@ const ReceptionistDocuments: React.FC = () => {
               </div>
             </div>
 
-            <!-- Patient & Doctor Info -->
+            <!-- Patient Info -->
             <div class="info-section">
               <div class="info-box">
                 <h3>Patient Information</h3>
                 <p class="patient-name">${prescription.patient.name}</p>
                 ${forceNoRow}
-                <p>${prescription.patient.gender}, ${prescription.patient.age} years</p>
-                <p>Phone: ${prescription.patient.phone}</p>
-              </div>
-              <div class="info-box">
-                <h3>Doctor Information</h3>
-                <p class="doctor-name">${prescription.doctor.name}</p>
-                <p class="specialty">${prescription.doctor.specialization}</p>
-                <p>${prescription.doctor.qualification}</p>
-                <p>Reg No: ${prescription.doctor.regNo}</p>
+                <p>${prescription.patient.gender}, ${prescription.patient.age && prescription.patient.age !== 0 ? prescription.patient.age + ' years' : 'Age N/A'}</p>
+                <p>Phone: ${prescription.patient.phone || 'N/A'}</p>
               </div>
             </div>
 

@@ -156,25 +156,24 @@ const ReceptionistDashboard: React.FC = () => {
         <div className="grid lg:grid-cols-2 gap-6">
           <RecentActivity title="Recent Activity" activities={activities} />
           <div className="bg-card rounded-xl border border-border p-6">
-            <h3 className="font-semibold text-foreground mb-4">Today's Schedule</h3>
+            <h3 className="font-semibold text-foreground mb-4">Today's Appointments</h3>
             <div className="space-y-3">
-              {[
-                { time: '09:00 AM', doctor: 'Dr. Khan', dept: 'Cardiology', slots: '5/10' },
-                { time: '10:00 AM', doctor: 'Dr. Ahmed', dept: 'Orthopedics', slots: '8/10' },
-                { time: '11:00 AM', doctor: 'Dr. Sara', dept: 'Pediatrics', slots: '3/10' },
-                { time: '02:00 PM', doctor: 'Dr. Ali', dept: 'General', slots: '6/10' },
-              ].map((slot, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium">{slot.doctor}</p>
-                    <p className="text-xs text-muted-foreground">{slot.dept}</p>
+              {appointments.filter((a: any) => a.status === 'scheduled').length > 0 ? (
+                appointments.filter((a: any) => a.status === 'scheduled').slice(0, 5).map((apt: any, i: number) => (
+                  <div key={apt._id || apt.id || i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">{apt.patientName || apt.patient || 'Patient'}</p>
+                      <p className="text-xs text-muted-foreground">{apt.doctor || apt.doctorName || 'Doctor'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{apt.time || 'Scheduled'}</p>
+                      <p className="text-xs text-muted-foreground">Room: {apt.roomNo || 'TBD'}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{slot.time}</p>
-                    <p className="text-xs text-muted-foreground">Slots: {slot.slots}</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No upcoming appointments</p>
+              )}
             </div>
           </div>
         </div>

@@ -13,13 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/utils/api';
@@ -64,22 +57,36 @@ const DoctorAppointments: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRoom, setSelectedRoom] = useState<string>(() => {
-    // Load from localStorage on mount
-    return localStorage.getItem('doctorSelectedRoom') || '';
-  });
+  const [selectedRoom, setSelectedRoom] = useState<string>('');
   const [queueData, setQueueData] = useState<QueueData | null>(null);
-  const [rooms, setRooms] = useState<string[]>(['101', '102', '103', '104', '105']);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoDetected, setAutoDetected] = useState(false);
 
-  // Save room selection to localStorage whenever it changes
+  // Auto-detect doctor's room from queue data
   useEffect(() => {
-    if (selectedRoom) {
-      localStorage.setItem('doctorSelectedRoom', selectedRoom);
+    const detectDoctorRoom = async () => {
+      try {
+        const response = await api.getAllQueues();
+        if (response.success && response.data) {
+          const doctorName = user?.name || '';
+          const myQueue = (Array.isArray(response.data) ? response.data : []).find(
+            (q: any) => q.doctorName?.toLowerCase() === doctorName.toLowerCase()
+          );
+          if (myQueue) {
+            setSelectedRoom(myQueue.roomNo);
+            setAutoDetected(true);
+          }
+        }
+      } catch (err) {
+        console.error('Error detecting doctor room:', err);
+      }
+    };
+    if (!selectedRoom) {
+      detectDoctorRoom();
     }
-  }, [selectedRoom]);
+  }, [user]);
 
   // Fetch queue data for selected room
   useEffect(() => {
@@ -223,24 +230,18 @@ const DoctorAppointments: React.FC = () => {
           </div>
         </div>
 
-        {/* Room Selection */}
+        {/* Room Info */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <label className="text-sm font-medium mb-2 block">Select Your Consultation Room</label>
-                <Select value={selectedRoom} onValueChange={setSelectedRoom}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a room..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rooms.map(room => (
-                      <SelectItem key={room} value={room}>
-                        Room {room}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Your Consultation Room</p>
+                <p className="text-2xl font-bold text-primary">
+                  {selectedRoom ? `Room ${selectedRoom}` : 'Detecting...'}
+                </p>
+                {queueData?.doctorName && (
+                  <p className="text-sm text-muted-foreground mt-1">{queueData.doctorName} - {queueData.department || 'General'}</p>
+                )}
               </div>
               <Button 
                 variant="outline" 

@@ -397,7 +397,7 @@ const AppointmentsPage: React.FC = () => {
                       <SelectContent>
                         {doctors.map((doc) => (
                           <SelectItem key={doc.id || doc._id} value={doc.name}>
-                            {doc.name} {doc.department ? `- ${doc.department}` : ''} ({doc.slots || 0} slots)
+                            {doc.name} {doc.department ? `- ${doc.department}` : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -455,36 +455,6 @@ const AppointmentsPage: React.FC = () => {
             Clear All
           </Button>
             </div>
-        </div>
-
-        {/* Doctor Availability */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {doctors.slice(0, 4).map((doc) => {
-            const slotsAvailable = doc.slots || 0;
-            const slotColor = slotsAvailable === 0 ? 'bg-destructive' : slotsAvailable <= 3 ? 'bg-yellow-500' : 'bg-green-500';
-            
-            return (
-              <Card key={doc.id || doc._id} className={slotsAvailable === 0 ? 'opacity-60' : ''}>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{doc.name}</p>
-                      <p className="text-xs text-muted-foreground">{doc.department}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Available Slots:</span>
-                    <Badge className={`${slotColor} text-white`}>
-                      {slotsAvailable}/{doc.max_slots || 10}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
         </div>
 
         {/* Appointments Table */}

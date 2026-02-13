@@ -24,15 +24,26 @@ const DoctorDashboard: React.FC = () => {
   const { user } = useAuth();
   const [queueData, setQueueData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [doctorRoom, setDoctorRoom] = useState<string>('101'); // Default room
+  const [doctorRoom, setDoctorRoom] = useState<string>('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch queue data for the doctor's room
-        const queueRes = await api.request(`/queue/room/${doctorRoom}`);
-        if (queueRes.success) {
-          setQueueData(queueRes.data);
+        // Auto-detect doctor's room by fetching all queues
+        const allQueuesRes = await api.getAllQueues();
+        if (allQueuesRes.success && allQueuesRes.data) {
+          const doctorName = user?.name || '';
+          const myQueue = (Array.isArray(allQueuesRes.data) ? allQueuesRes.data : []).find(
+            (q: any) => q.doctorName?.toLowerCase() === doctorName.toLowerCase()
+          );
+          if (myQueue) {
+            setDoctorRoom(myQueue.roomNo);
+            // Fetch specific room queue data
+            const queueRes = await api.request(`/queue/room/${myQueue.roomNo}`);
+            if (queueRes.success) {
+              setQueueData(queueRes.data);
+            }
+          }
         }
       } catch (error) {
         console.error('Error fetching doctor data:', error);
@@ -45,7 +56,7 @@ const DoctorDashboard: React.FC = () => {
     // Auto-refresh queue data every 10 seconds
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
-  }, [doctorRoom]);
+  }, [user]);
 
   const waitingCount = queueData?.patients?.filter((p: any) => p.status === 'waiting').length || 0;
   const servingCount = queueData?.patients?.filter((p: any) => p.status === 'serving').length || 0;
@@ -70,38 +81,6 @@ const DoctorDashboard: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-foreground">Doctor Dashboard</h2>
           <p className="text-muted-foreground">Welcome back, {user?.name || 'Doctor'}</p>
-        </div>
-
-        {/* Stats Grid - Queue Data */}
-        <div className="dashboard-grid">
-          <StatCard
-            title="Patients Waiting"
-            value={waitingCount}
-            subtitle={`In queue for Room ${queueData?.roomNo || '101'}`}
-            icon={Clock}
-            variant="warning"
-          />
-          <StatCard
-            title="Currently Serving"
-            value={servingCount}
-            subtitle={queueData?.currentPatient?.patientName || 'No patient'}
-            icon={Activity}
-            variant="primary"
-          />
-          <StatCard
-            title="Completed Today"
-            value={completedCount}
-            subtitle={`Out of ${totalCount} total patients`}
-            icon={CheckCircle}
-            variant="success"
-          />
-          <StatCard
-            title="Total in Queue"
-            value={totalCount}
-            subtitle={`Department: ${queueData?.department || 'General'}`}
-            icon={Users}
-            variant="info"
-          />
         </div>
 
         {/* Quick Actions */}
@@ -147,53 +126,11 @@ const DoctorDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Current & Upcoming Patients */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Current Patient */}
-          {queueData?.currentPatient ? (
-            <Card className="border-primary border-2 bg-primary/5">
-              <CardHeader>
-                <CardTitle className="text-sm">Currently Serving</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-lg">{queueData.currentPatient.patientName}</p>
-                      <p className="text-sm text-muted-foreground">Token: {queueData.currentPatient.tokenNo}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Force No</p>
-                      <p className="font-bold text-primary">{queueData.currentPatient.forceNo || 'N/A'}</p>
-                    </div>
-                  </div>
-                  {queueData.currentPatient.complaint && (
-                    <div className="p-2 bg-muted/50 rounded text-sm">
-                      <p className="text-muted-foreground">Complaint: {queueData.currentPatient.complaint}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Currently Serving</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <AlertCircle className="w-4 h-4" />
-                  <p className="text-sm">No patient being served</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Upcoming Patients */}
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h3 className="font-semibold text-foreground mb-4">Waiting Patients</h3>
-            <div className="space-y-3">
-              {upcomingPatients.length > 0 ? upcomingPatients.map((patient: any, i: number) => (
+        {/* Upcoming Patients */}
+        <div className="bg-card rounded-xl border border-border p-6">
+          <h3 className="font-semibold text-foreground mb-4">Upcoming Patients</h3>
+          <div className="space-y-3">
+            {upcomingPatients.length > 0 ? upcomingPatients.map((patient: any, i: number) => (
                 <div key={`${patient.tokenNo}-${i}`} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-warning/20 flex items-center justify-center">
@@ -214,7 +151,6 @@ const DoctorDashboard: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
       </div>
     </DashboardLayout>
   );

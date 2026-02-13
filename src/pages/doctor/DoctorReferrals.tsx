@@ -109,9 +109,9 @@ const DoctorReferrals: React.FC = () => {
         const patientList = (Array.isArray(response.data) ? response.data : []).map((p: any) => ({
           id: p._id || p.id,
           mrNo: p.mrNo || p.patientNo || '',
-          name: p.name || 'Unknown',
+          name: p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name || 'Unknown',
           forceNo: p.forceNo || '',
-          age: p.age || '',
+          age: p.age || (p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : ''),
           gender: p.gender || '',
           phone: p.phone || '',
         }));

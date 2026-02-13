@@ -114,7 +114,7 @@ const EntriesPage: React.FC = () => {
           .filter((apt: any) => apt.date === today && apt.status === 'scheduled')
           .map((apt: any) => ({
             id: apt.id || apt._id,
-            tokenNo: apt.appointmentNo || `APT-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+            tokenNo: apt.token || apt.appointmentNo || `TKN-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
             patientName: apt.patient || apt.patientName || 'Unknown',
             mrNo: apt.patientNo || '',
             department: apt.department || 'OPD',
