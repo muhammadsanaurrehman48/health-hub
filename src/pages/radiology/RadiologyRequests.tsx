@@ -77,8 +77,19 @@ const RadiologyRequests: React.FC = () => {
     }
   };
 
-  const handleStartExam = (request: any) => {
-    toast.success(`Started examination for ${request.patientName}`);
+  const handleStartExam = async (request: any) => {
+    try {
+      const response = await api.updateRadiologyRequest(request.id, { status: 'in-progress' });
+      if (response.success) {
+        setRadiologyRequests(prev => prev.map(r => r.id === request.id ? { ...r, status: 'in-progress' } : r));
+        toast.success(`Started examination for ${request.patientName}`);
+      } else {
+        toast.error(response.message || 'Failed to start exam');
+      }
+    } catch (error) {
+      console.error('Error starting exam:', error);
+      toast.error('Failed to start exam');
+    }
   };
 
   const handleUploadReport = (request: any) => {
@@ -86,11 +97,30 @@ const RadiologyRequests: React.FC = () => {
     setIsReportDialogOpen(true);
   };
 
-  const handleSaveReport = () => {
-    toast.success(`Report saved for ${selectedRequest?.patientName}`);
-    setIsReportDialogOpen(false);
-    setFindings('');
-    setImpression('');
+  const handleSaveReport = async () => {
+    if (!findings.trim()) {
+      toast.error('Please enter findings');
+      return;
+    }
+    try {
+      const response = await api.updateRadiologyRequest(selectedRequest.id, {
+        status: 'completed',
+        report: { findings, impression },
+      });
+      if (response.success) {
+        setRadiologyRequests(prev => prev.map(r => r.id === selectedRequest.id ? { ...r, status: 'completed', report: { findings, impression } } : r));
+        toast.success(`Report saved for ${selectedRequest?.patientName}`);
+        setIsReportDialogOpen(false);
+        setFindings('');
+        setImpression('');
+        setSelectedRequest(null);
+      } else {
+        toast.error(response.message || 'Failed to save report');
+      }
+    } catch (error) {
+      console.error('Error saving report:', error);
+      toast.error('Failed to save report');
+    }
   };
 
   const filteredRequests = radiologyRequests.filter((req) =>

@@ -74,8 +74,19 @@ const LaboratoryRequests: React.FC = () => {
     }
   };
 
-  const handleCollectSample = (request: any) => {
-    toast.success(`Sample collected for ${request.patientName}`);
+  const handleCollectSample = async (request: any) => {
+    try {
+      const response = await api.updateLabRequest(request.id, { status: 'sample-collected' });
+      if (response.success) {
+        setLabRequests(prev => prev.map(r => r.id === request.id ? { ...r, status: 'sample-collected' } : r));
+        toast.success(`Sample collected for ${request.patientName}`);
+      } else {
+        toast.error(response.message || 'Failed to update status');
+      }
+    } catch (error) {
+      console.error('Error collecting sample:', error);
+      toast.error('Failed to collect sample');
+    }
   };
 
   const handleEnterResult = (request: any) => {
@@ -83,10 +94,29 @@ const LaboratoryRequests: React.FC = () => {
     setIsResultDialogOpen(true);
   };
 
-  const handleSaveResult = () => {
-    toast.success(`Results saved for ${selectedRequest?.patientName}`);
-    setIsResultDialogOpen(false);
-    setResultText('');
+  const handleSaveResult = async () => {
+    if (!resultText.trim()) {
+      toast.error('Please enter test results');
+      return;
+    }
+    try {
+      const response = await api.updateLabRequest(selectedRequest.id, {
+        status: 'completed',
+        result: resultText,
+      });
+      if (response.success) {
+        setLabRequests(prev => prev.map(r => r.id === selectedRequest.id ? { ...r, status: 'completed', result: resultText } : r));
+        toast.success(`Results saved for ${selectedRequest?.patientName}`);
+        setIsResultDialogOpen(false);
+        setResultText('');
+        setSelectedRequest(null);
+      } else {
+        toast.error(response.message || 'Failed to save results');
+      }
+    } catch (error) {
+      console.error('Error saving results:', error);
+      toast.error('Failed to save results');
+    }
   };
 
   const filteredRequests = labRequests.filter((req) =>
