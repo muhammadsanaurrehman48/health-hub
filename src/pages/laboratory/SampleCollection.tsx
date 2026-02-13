@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,30 +10,70 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Check, Clock, Beaker } from 'lucide-react';
+import { Search, Check, Clock, Beaker, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-const pendingSamples = [
-  { id: '1', mrNo: 'MR-001234', patient: 'Muhammad Ali', test: 'Complete Blood Count', doctor: 'Dr. Ahmed', requestTime: '09:30 AM', priority: 'normal' },
-  { id: '2', mrNo: 'MR-001235', patient: 'Fatima Begum', test: 'Lipid Profile', doctor: 'Dr. Sara', requestTime: '10:00 AM', priority: 'urgent' },
-  { id: '3', mrNo: 'MR-001236', patient: 'Ahmed Khan', test: 'Liver Function Test', doctor: 'Dr. Khan', requestTime: '10:15 AM', priority: 'normal' },
-  { id: '4', mrNo: 'MR-001237', patient: 'Sara Hassan', test: 'Thyroid Panel', doctor: 'Dr. Fatima', requestTime: '10:45 AM', priority: 'normal' },
-  { id: '5', mrNo: 'MR-001238', patient: 'Usman Ali', test: 'Urine Analysis', doctor: 'Dr. Ali', requestTime: '11:00 AM', priority: 'urgent' },
-];
+import api from '@/utils/api';
 
 const SampleCollection: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [collectedSamples, setCollectedSamples] = useState<string[]>([]);
+  const [labRequests, setLabRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [collectingId, setCollectingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchLabRequests();
+  }, []);
+
+  const fetchLabRequests = async () => {
+    try {
+      const response = await api.getLabRequests();
+      if (response.success) {
+        setLabRequests(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching lab requests:', error);
+      toast.error('Failed to load lab requests');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pendingSamples = labRequests.filter(r => r.status === 'pending');
+  const collectedCount = labRequests.filter(r => r.status === 'sample-collected' || r.status === 'in-progress' || r.status === 'completed').length;
 
   const filteredSamples = pendingSamples.filter(sample =>
-    sample.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sample.mrNo.toLowerCase().includes(searchTerm.toLowerCase())
+    sample.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sample.mrNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sample.requestNo?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCollectSample = (sampleId: string, patientName: string) => {
-    setCollectedSamples([...collectedSamples, sampleId]);
-    toast.success(`Sample collected for ${patientName}`);
+  const handleCollectSample = async (request: any) => {
+    setCollectingId(request.id);
+    try {
+      const response = await api.updateLabRequest(request.id, { status: 'sample-collected' });
+      if (response.success) {
+        setLabRequests(prev => prev.map(r => r.id === request.id ? { ...r, status: 'sample-collected' } : r));
+        toast.success(`Sample collected for ${request.patientName}`);
+      } else {
+        toast.error(response.message || 'Failed to collect sample');
+      }
+    } catch (error) {
+      console.error('Error collecting sample:', error);
+      toast.error('Failed to collect sample');
+    } finally {
+      setCollectingId(null);
+    }
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="laboratory">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="laboratory">
@@ -51,7 +91,7 @@ const SampleCollection: React.FC = () => {
                 <Clock className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{pendingSamples.length - collectedSamples.length}</p>
+                <p className="text-2xl font-bold">{pendingSamples.length}</p>
                 <p className="text-sm text-muted-foreground">Pending Collection</p>
               </div>
             </div>
@@ -62,19 +102,19 @@ const SampleCollection: React.FC = () => {
                 <Check className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{collectedSamples.length}</p>
-                <p className="text-sm text-muted-foreground">Collected Today</p>
+                <p className="text-2xl font-bold">{collectedCount}</p>
+                <p className="text-sm text-muted-foreground">Collected / Processed</p>
               </div>
             </div>
           </div>
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <Beaker className="w-5 h-5 text-red-600" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Beaker className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{pendingSamples.filter(s => s.priority === 'urgent').length}</p>
-                <p className="text-sm text-muted-foreground">Urgent Samples</p>
+                <p className="text-2xl font-bold">{labRequests.length}</p>
+                <p className="text-sm text-muted-foreground">Total Requests</p>
               </div>
             </div>
           </div>
@@ -84,7 +124,7 @@ const SampleCollection: React.FC = () => {
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by patient name or MR No..."
+            placeholder="Search by patient name, MR No, or Request No..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -96,48 +136,46 @@ const SampleCollection: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>MR No</TableHead>
+                <TableHead>Request No</TableHead>
                 <TableHead>Patient</TableHead>
+                <TableHead>MR No</TableHead>
                 <TableHead>Test</TableHead>
                 <TableHead>Requested By</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSamples.map((sample) => {
-                const isCollected = collectedSamples.includes(sample.id);
-                return (
-                  <TableRow key={sample.id}>
-                    <TableCell className="font-medium text-primary">{sample.mrNo}</TableCell>
-                    <TableCell>{sample.patient}</TableCell>
-                    <TableCell>{sample.test}</TableCell>
-                    <TableCell>{sample.doctor}</TableCell>
-                    <TableCell>{sample.requestTime}</TableCell>
-                    <TableCell>
-                      <span className={sample.priority === 'urgent' ? 'badge-cancelled' : 'badge-pending'}>
-                        {sample.priority}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className={isCollected ? 'badge-completed' : 'badge-pending'}>
-                        {isCollected ? 'Collected' : 'Pending'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        disabled={isCollected}
-                        onClick={() => handleCollectSample(sample.id, sample.patient)}
-                      >
-                        {isCollected ? 'Done' : 'Collect Sample'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {filteredSamples.length > 0 ? filteredSamples.map((sample) => (
+                <TableRow key={sample.id}>
+                  <TableCell className="font-bold text-primary">{sample.requestNo}</TableCell>
+                  <TableCell className="font-medium">{sample.patientName}</TableCell>
+                  <TableCell>{sample.mrNo || '-'}</TableCell>
+                  <TableCell>{sample.test}</TableCell>
+                  <TableCell>{sample.doctor}</TableCell>
+                  <TableCell>{sample.requestDate}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      disabled={collectingId === sample.id}
+                      onClick={() => handleCollectSample(sample)}
+                    >
+                      {collectingId === sample.id ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <Beaker className="w-4 h-4 mr-1" />
+                      )}
+                      Collect Sample
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No pending samples to collect
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>

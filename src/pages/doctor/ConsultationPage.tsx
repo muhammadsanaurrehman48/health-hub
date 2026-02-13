@@ -41,6 +41,51 @@ interface Medicine {
   instructions: string;
 }
 
+// Predefined common lab & radiology tests (services, not stock items)
+const COMMON_LAB_TESTS = [
+  'Complete Blood Count (CBC)',
+  'Blood Sugar Fasting',
+  'Blood Sugar Random',
+  'HbA1c',
+  'Lipid Profile',
+  'Liver Function Tests (LFT)',
+  'Renal Function Tests (RFT)',
+  'Thyroid Function Tests (TFT)',
+  'Urine Routine Examination',
+  'Serum Electrolytes',
+  'Serum Uric Acid',
+  'Hepatitis B Surface Antigen',
+  'Hepatitis C Antibody',
+  'ESR (Erythrocyte Sedimentation Rate)',
+  'Blood Culture & Sensitivity',
+  'Coagulation Profile (PT/INR)',
+  'Vitamin D Level',
+  'Vitamin B12 Level',
+  'ECG (Electrocardiogram)',
+  'Pulmonary Function Test',
+];
+
+const COMMON_RADIOLOGY_TESTS = [
+  'X-Ray Chest (PA View)',
+  'X-Ray Abdomen',
+  'X-Ray Spine (Cervical)',
+  'X-Ray Spine (Lumbar)',
+  'X-Ray Pelvis',
+  'X-Ray Knee',
+  'X-Ray Shoulder',
+  'Ultrasound Abdomen',
+  'Ultrasound Pelvis',
+  'Ultrasound KUB (Kidney, Ureter, Bladder)',
+  'CT Scan Brain',
+  'CT Scan Chest',
+  'CT Scan Abdomen',
+  'MRI Brain',
+  'MRI Spine (Lumbar)',
+  'MRI Knee',
+  'Echocardiography',
+  'Doppler Ultrasound (Lower Limb)',
+];
+
 const ConsultationPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -48,8 +93,10 @@ const ConsultationPage: React.FC = () => {
   
   // Inventory state
   const [availableMedicines, setAvailableMedicines] = useState<any[]>([]);
-  const [availableLabTests, setAvailableLabTests] = useState<any[]>([]);
-  const [availableRadiologyTests, setAvailableRadiologyTests] = useState<any[]>([]);
+  const [availableLabTests, setAvailableLabTests] = useState<string[]>(COMMON_LAB_TESTS);
+  const [availableRadiologyTests, setAvailableRadiologyTests] = useState<any[]>(
+    COMMON_RADIOLOGY_TESTS.map((name, i) => ({ id: `rad-${i}`, name }))
+  );
   const [inventoryLoading, setInventoryLoading] = useState(true);
   
   const patient = location.state?.patient || {
@@ -61,7 +108,7 @@ const ConsultationPage: React.FC = () => {
     complaint: 'Chest pain',
   };
 
-  // Fetch inventory items on component mount
+  // Fetch medicines from inventory on mount (lab/radiology tests use predefined lists)
   useEffect(() => {
     const fetchInventory = async () => {
       try {
@@ -74,24 +121,11 @@ const ConsultationPage: React.FC = () => {
             (item.category === 'Medicine' || item.category === 'pharmacy') && item.quantity > 0
           ).map((m: any) => m.name);
           
-          // Filter lab tests (category: Lab Supplies)
-          const labTests = response.data.filter((item: any) => 
-            (item.category === 'Lab' || item.category === 'Lab Supplies') && item.quantity > 0
-          ).map((t: any) => t.name);
-          
-          // Filter radiology tests - store both name and category for better organization
-          const radiologyTests = response.data.filter((item: any) => 
-            (item.category === 'Lab' || item.category === 'Lab Supplies' || item.name.includes('Ray') || item.name.includes('Ultrasound') || item.name.includes('Scan') || item.name.includes('CT') || item.name.includes('MRI'))
-            && item.quantity > 0
-          ).map((t: any) => ({ id: t._id, name: t.name }));
-          
           setAvailableMedicines([...new Set(medicines)]);
-          setAvailableLabTests([...new Set(labTests)]);
-          setAvailableRadiologyTests(radiologyTests.filter((t: any) => !labTests.includes(t.name)));
         }
       } catch (error) {
         console.error('Failed to fetch inventory:', error);
-        toast.error('Failed to load medicines and tests from inventory');
+        toast.error('Failed to load medicines from inventory');
       } finally {
         setInventoryLoading(false);
       }
@@ -694,29 +728,20 @@ const ConsultationPage: React.FC = () => {
                   <CardDescription>Select tests to request from laboratory</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {inventoryLoading ? (
-                    <div className="flex items-center gap-2 py-8">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <p>Loading tests...</p>
-                    </div>
-                  ) : availableLabTests.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4">No lab tests available in inventory</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {availableLabTests.map((test) => (
-                        <div key={test} className="flex items-center space-x-3">
-                          <Checkbox
-                            id={`lab-${test}`}
-                            checked={selectedLabTests.includes(test)}
-                            onCheckedChange={() => toggleLabTest(test)}
-                          />
-                          <label htmlFor={`lab-${test}`} className="text-sm font-medium cursor-pointer">
-                            {test}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+                    {availableLabTests.map((test) => (
+                      <div key={test} className="flex items-center space-x-3">
+                        <Checkbox
+                          id={`lab-${test}`}
+                          checked={selectedLabTests.includes(test)}
+                          onCheckedChange={() => toggleLabTest(test)}
+                        />
+                        <label htmlFor={`lab-${test}`} className="text-sm font-medium cursor-pointer">
+                          {test}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                   {selectedLabTests.length > 0 && (
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm font-medium mb-2">Selected ({selectedLabTests.length}):</p>
@@ -746,29 +771,20 @@ const ConsultationPage: React.FC = () => {
                   <CardDescription>Select imaging tests to request</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {inventoryLoading ? (
-                    <div className="flex items-center gap-2 py-8">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <p>Loading tests...</p>
-                    </div>
-                  ) : availableRadiologyTests.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4">No radiology tests available in inventory</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {availableRadiologyTests.map((test: any) => (
-                        <div key={test.id} className="flex items-center space-x-3">
-                          <Checkbox
-                            id={`rad-${test.id}`}
-                            checked={selectedRadiologyTests.includes(test.name)}
-                            onCheckedChange={() => toggleRadiologyTest(test.name)}
-                          />
-                          <label htmlFor={`rad-${test.id}`} className="text-sm font-medium cursor-pointer">
-                            {test.name}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+                    {availableRadiologyTests.map((test: any) => (
+                      <div key={test.id} className="flex items-center space-x-3">
+                        <Checkbox
+                          id={`rad-${test.id}`}
+                          checked={selectedRadiologyTests.includes(test.name)}
+                          onCheckedChange={() => toggleRadiologyTest(test.name)}
+                        />
+                        <label htmlFor={`rad-${test.id}`} className="text-sm font-medium cursor-pointer">
+                          {test.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                   {selectedRadiologyTests.length > 0 && (
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm font-medium mb-2">Selected ({selectedRadiologyTests.length}):</p>

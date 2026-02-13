@@ -58,13 +58,16 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
     // Build items HTML
     let itemsHTML = '';
     (data.items || []).forEach(item => {
-      const desc = item.description || item.name || 'Service';
+      const desc = item.description || item.name || (item as any).service || 'Service';
       const dept = item.department || '';
       const qty = item.quantity || 1;
-      const total = item.total || item.amount || item.unitPrice || 0;
+      const unitPrice = item.unitPrice || (item as any).price || 0;
+      const total = item.total || item.amount || (unitPrice * qty) || 0;
       itemsHTML += '<div class="table-row">';
       itemsHTML += '<div class="item-desc"><strong>' + desc + '</strong>';
-      itemsHTML += '<div class="item-dept">' + dept + '</div></div>';
+      if (dept) itemsHTML += '<div class="item-dept">' + dept + '</div>';
+      if (unitPrice > 0) itemsHTML += '<div class="item-dept">@ Rs. ' + unitPrice.toLocaleString() + ' each</div>';
+      itemsHTML += '</div>';
       itemsHTML += '<div class="item-qty">' + qty + '</div>';
       itemsHTML += '<div class="item-amount">Rs. ' + total.toLocaleString() + '</div>';
       itemsHTML += '</div>';
@@ -319,22 +322,29 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
             <p className="text-xs font-bold mb-2">SERVICES</p>
             <div className="text-xs space-y-1">
               <div className="flex justify-between font-semibold border-b pb-1">
-                <span className="flex-1">Description</span>
+                <span className="flex-1">Medicine / Service</span>
                 <span className="w-12 text-right">Qty</span>
-                <span className="w-16 text-right">Amount</span>
+                <span className="w-20 text-right">Amount</span>
               </div>
-              {(data.items || []).map((item, index) => (
-                <div key={index} className="space-y-0">
-                  <div className="flex justify-between">
-                    <div className="flex-1">
-                      <p className="font-medium">{item.description || item.name || 'Service'}</p>
-                      <p className="text-xs text-muted-foreground">{item.department || ''}</p>
+              {(data.items || []).map((item, index) => {
+                const desc = item.description || item.name || (item as any).service || 'Service';
+                const qty = item.quantity || 1;
+                const unitPrice = item.unitPrice || (item as any).price || 0;
+                const total = item.total || item.amount || (unitPrice * qty) || 0;
+                return (
+                  <div key={index} className="space-y-0">
+                    <div className="flex justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium">{desc}</p>
+                        {item.department && <p className="text-xs text-muted-foreground">{item.department}</p>}
+                        {unitPrice > 0 && <p className="text-xs text-muted-foreground">@ Rs. {unitPrice.toLocaleString()} each</p>}
+                      </div>
+                      <span className="w-12 text-right">{qty}</span>
+                      <span className="w-20 text-right font-semibold">Rs. {total.toLocaleString()}</span>
                     </div>
-                    <span className="w-12 text-right">{item.quantity || 1}</span>
-                    <span className="w-16 text-right font-semibold">Rs. {(item.total || item.amount || item.unitPrice || 0).toLocaleString()}</span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

@@ -170,13 +170,14 @@ const DoctorPatientHistory: React.FC = () => {
           .filter((l: any) => l.patientId === patientId)
           .forEach((l: any) => {
             history.push({
-              id: l._id,
-              date: l.date || l.createdAt?.split('T')[0],
+              id: l._id || l.id,
+              date: l.requestDate || l.date || l.createdAt?.split('T')[0],
               type: 'Lab Report',
               doctor: l.doctor || '-',
               diagnosis: l.test || l.testName || '-',
-              prescription: '-',
-              notes: l.result || l.notes || '-',
+              prescription: l.requestNo || '-',
+              notes: typeof l.result === 'string' ? l.result : (l.result ? JSON.stringify(l.result) : '-'),
+              status: l.status || 'pending',
             });
           });
       }
@@ -186,14 +187,19 @@ const DoctorPatientHistory: React.FC = () => {
         radRes.data
           .filter((r: any) => r.patientId === patientId)
           .forEach((r: any) => {
+            const report = r.report || {};
+            const findings = report.findings || '';
+            const impression = report.impression || '';
+            const notesText = [findings, impression].filter(Boolean).join(' | ') || '-';
             history.push({
-              id: r._id,
+              id: r._id || r.id,
               date: r.requestDate || r.createdAt?.split('T')[0],
               type: 'Radiology',
               doctor: r.doctor || '-',
-              diagnosis: r.test || '-',
-              prescription: '-',
-              notes: r.findings || r.impression || '-',
+              diagnosis: r.test || r.testType || '-',
+              prescription: r.requestNo || '-',
+              notes: notesText,
+              status: r.status || 'pending',
             });
           });
       }

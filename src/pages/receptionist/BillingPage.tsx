@@ -320,11 +320,8 @@ const BillingPage: React.FC = () => {
       const amount = parseFloat(paymentAmount);
       const outstandingBalance = (selectedInvoiceForPayment.netAmount || selectedInvoiceForPayment.total || 0);
 
-      if (amount > outstandingBalance) {
-        toast.error(`Cannot exceed outstanding balance of Rs. ${outstandingBalance.toLocaleString()}`);
-        setProcessingPayment(false);
-        return;
-      }
+      // Allow overpayment (change will be returned to patient)
+      const effectivePayment = Math.min(amount, outstandingBalance);
 
       console.log('💳 Processing payment for invoice:', selectedInvoiceForPayment.invoiceNo);
       
@@ -340,8 +337,10 @@ const BillingPage: React.FC = () => {
 
       if (response.success) {
         console.log('✅ Payment processed:', newStatus);
+        const change = amount - outstandingBalance;
+        const changeMsg = change > 0 ? ` | Return to patient: Rs. ${change.toLocaleString()}` : '';
         toast.success('Payment processed successfully!', {
-          description: `Amount: Rs. ${amount.toLocaleString()} | Status: ${newStatus}`,
+          description: `Received: Rs. ${amount.toLocaleString()} | Status: ${newStatus}${changeMsg}`,
         });
 
         // Refresh invoices and reset form

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,50 +20,101 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, FileText, Activity } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Search, FileText, Activity, Loader2, CheckCircle, FlaskConical } from 'lucide-react';
 import { toast } from 'sonner';
-
-const pendingResults = [
-  { id: '1', mrNo: 'MR-001234', patient: 'Muhammad Ali', test: 'Complete Blood Count', sampleTime: '09:45 AM', status: 'processing' },
-  { id: '2', mrNo: 'MR-001235', patient: 'Fatima Begum', test: 'Lipid Profile', sampleTime: '10:15 AM', status: 'processing' },
-  { id: '3', mrNo: 'MR-001236', patient: 'Ahmed Khan', test: 'Liver Function Test', sampleTime: '10:30 AM', status: 'processing' },
-  { id: '4', mrNo: 'MR-001237', patient: 'Sara Hassan', test: 'Thyroid Panel', sampleTime: '11:00 AM', status: 'awaiting-sample' },
-];
-
-const cbcParameters = [
-  { name: 'Hemoglobin', unit: 'g/dL', normalRange: '12.0 - 17.5' },
-  { name: 'RBC Count', unit: 'million/µL', normalRange: '4.5 - 5.5' },
-  { name: 'WBC Count', unit: '/µL', normalRange: '4500 - 11000' },
-  { name: 'Platelet Count', unit: '/µL', normalRange: '150000 - 400000' },
-  { name: 'Hematocrit', unit: '%', normalRange: '36 - 50' },
-  { name: 'MCV', unit: 'fL', normalRange: '80 - 100' },
-  { name: 'MCH', unit: 'pg', normalRange: '27 - 33' },
-  { name: 'MCHC', unit: 'g/dL', normalRange: '32 - 36' },
-];
+import api from '@/utils/api';
 
 const ResultsEntry: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
-  const [selectedTest, setSelectedTest] = useState<typeof pendingResults[0] | null>(null);
-  const [results, setResults] = useState<Record<string, string>>({});
-  const [remarks, setRemarks] = useState('');
+  const [selectedTest, setSelectedTest] = useState<any>(null);
+  const [resultText, setResultText] = useState('');
+  const [labRequests, setLabRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const filteredTests = pendingResults.filter(test =>
-    test.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    test.mrNo.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    fetchLabRequests();
+  }, []);
+
+  const fetchLabRequests = async () => {
+    try {
+      const response = await api.getLabRequests();
+      if (response.success) {
+        setLabRequests(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching lab requests:', error);
+      toast.error('Failed to load lab requests');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const awaitingResults = labRequests.filter(r => r.status === 'sample-collected' || r.status === 'in-progress');
+  const completedCount = labRequests.filter(r => r.status === 'completed').length;
+
+  const filteredTests = awaitingResults.filter(test =>
+    test.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    test.mrNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    test.requestNo?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleEnterResults = (test: typeof pendingResults[0]) => {
+  const handleEnterResults = (test: any) => {
     setSelectedTest(test);
-    setResults({});
-    setRemarks('');
+    setResultText(typeof test.result === 'string' ? test.result : '');
     setIsEntryDialogOpen(true);
   };
 
-  const handleSubmitResults = () => {
-    toast.success(`Results submitted for ${selectedTest?.patient}`);
-    setIsEntryDialogOpen(false);
+  const handleSubmitResults = async () => {
+    if (!resultText.trim()) {
+      toast.error('Please enter test results');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const response = await api.updateLabRequest(selectedTest.id, {
+        status: 'completed',
+        result: resultText,
+      });
+      if (response.success) {
+        setLabRequests(prev => prev.map(r => r.id === selectedTest.id ? { ...r, status: 'completed', result: resultText } : r));
+        toast.success(`Results submitted for ${selectedTest?.patientName}`);
+        setIsEntryDialogOpen(false);
+        setResultText('');
+        setSelectedTest(null);
+      } else {
+        toast.error(response.message || 'Failed to submit results');
+      }
+    } catch (error) {
+      console.error('Error submitting results:', error);
+      toast.error('Failed to submit results');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'sample-collected':
+        return <Badge className="bg-blue-500 text-white"><FlaskConical className="w-3 h-3 mr-1" /> Sample Collected</Badge>;
+      case 'in-progress':
+        return <Badge className="bg-primary"><Activity className="w-3 h-3 mr-1" /> In Progress</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="laboratory">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="laboratory">
@@ -81,7 +132,7 @@ const ResultsEntry: React.FC = () => {
                 <Activity className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{pendingResults.filter(t => t.status === 'processing').length}</p>
+                <p className="text-2xl font-bold">{awaitingResults.length}</p>
                 <p className="text-sm text-muted-foreground">Awaiting Results</p>
               </div>
             </div>
@@ -89,11 +140,11 @@ const ResultsEntry: React.FC = () => {
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-100 rounded-lg">
-                <FileText className="w-5 h-5 text-green-600" />
+                <CheckCircle className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">18</p>
-                <p className="text-sm text-muted-foreground">Completed Today</p>
+                <p className="text-2xl font-bold">{completedCount}</p>
+                <p className="text-sm text-muted-foreground">Completed</p>
               </div>
             </div>
           </div>
@@ -103,7 +154,7 @@ const ResultsEntry: React.FC = () => {
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by patient name or MR No..."
+            placeholder="Search by patient name, MR No, or Request No..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -115,37 +166,38 @@ const ResultsEntry: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>MR No</TableHead>
+                <TableHead>Request No</TableHead>
                 <TableHead>Patient</TableHead>
+                <TableHead>MR No</TableHead>
                 <TableHead>Test</TableHead>
-                <TableHead>Sample Time</TableHead>
+                <TableHead>Requested By</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTests.map((test) => (
+              {filteredTests.length > 0 ? filteredTests.map((test) => (
                 <TableRow key={test.id}>
-                  <TableCell className="font-medium text-primary">{test.mrNo}</TableCell>
-                  <TableCell>{test.patient}</TableCell>
+                  <TableCell className="font-bold text-primary">{test.requestNo}</TableCell>
+                  <TableCell className="font-medium">{test.patientName}</TableCell>
+                  <TableCell>{test.mrNo || '-'}</TableCell>
                   <TableCell>{test.test}</TableCell>
-                  <TableCell>{test.sampleTime}</TableCell>
-                  <TableCell>
-                    <span className={test.status === 'processing' ? 'badge-active' : 'badge-pending'}>
-                      {test.status === 'processing' ? 'Processing' : 'Awaiting Sample'}
-                    </span>
-                  </TableCell>
+                  <TableCell>{test.doctor}</TableCell>
+                  <TableCell>{getStatusBadge(test.status)}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      disabled={test.status !== 'processing'}
-                      onClick={() => handleEnterResults(test)}
-                    >
+                    <Button size="sm" onClick={() => handleEnterResults(test)}>
+                      <FileText className="w-4 h-4 mr-1" />
                       Enter Results
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No tests awaiting results
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
@@ -156,52 +208,46 @@ const ResultsEntry: React.FC = () => {
             <DialogHeader>
               <DialogTitle>Enter Test Results</DialogTitle>
               <DialogDescription>
-                {selectedTest?.test} for {selectedTest?.patient} ({selectedTest?.mrNo})
+                {selectedTest?.test} for {selectedTest?.patientName} ({selectedTest?.mrNo || selectedTest?.requestNo})
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Parameter</TableHead>
-                      <TableHead>Result</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead>Normal Range</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {cbcParameters.map((param) => (
-                      <TableRow key={param.name}>
-                        <TableCell className="font-medium">{param.name}</TableCell>
-                        <TableCell>
-                          <Input
-                            placeholder="Enter value"
-                            className="w-24"
-                            value={results[param.name] || ''}
-                            onChange={(e) => setResults({ ...results, [param.name]: e.target.value })}
-                          />
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{param.unit}</TableCell>
-                        <TableCell className="text-muted-foreground">{param.normalRange}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+            {selectedTest && (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Patient</p>
+                    <p className="font-medium">{selectedTest.patientName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">MR No</p>
+                    <p className="font-medium">{selectedTest.mrNo || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Test</p>
+                    <p className="font-medium">{selectedTest.test}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Request No</p>
+                    <p className="font-medium">{selectedTest.requestNo}</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Test Results *</Label>
+                  <Textarea
+                    placeholder="Enter detailed test results, values, and observations..."
+                    value={resultText}
+                    onChange={(e) => setResultText(e.target.value)}
+                    rows={8}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Remarks / Comments</Label>
-                <Textarea
-                  placeholder="Enter any additional remarks..."
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  rows={3}
-                />
-              </div>
-            </div>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsEntryDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSubmitResults}>Submit Results</Button>
+              <Button onClick={handleSubmitResults} disabled={submitting}>
+                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                Submit Results
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

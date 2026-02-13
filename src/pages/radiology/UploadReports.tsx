@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,13 +13,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Table,
   TableBody,
   TableCell,
@@ -27,45 +20,121 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Upload, FileImage, Clock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Search, Upload, FileImage, Clock, Loader2, CheckCircle, PlayCircle } from 'lucide-react';
 import { toast } from 'sonner';
-
-const pendingScans = [
-  { id: '1', mrNo: 'MR-001234', patient: 'Muhammad Ali', test: 'Chest X-Ray', doctor: 'Dr. Ahmed', requestTime: '09:30 AM', priority: 'urgent' },
-  { id: '2', mrNo: 'MR-001235', patient: 'Fatima Begum', test: 'Brain MRI', doctor: 'Dr. Khan', requestTime: '10:00 AM', priority: 'normal' },
-  { id: '3', mrNo: 'MR-001236', patient: 'Ahmed Khan', test: 'CT Abdomen', doctor: 'Dr. Sara', requestTime: '10:30 AM', priority: 'normal' },
-  { id: '4', mrNo: 'MR-001237', patient: 'Sara Hassan', test: 'Spine X-Ray', doctor: 'Dr. Ali', requestTime: '11:00 AM', priority: 'normal' },
-];
+import api from '@/utils/api';
 
 const UploadReports: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  const [selectedScan, setSelectedScan] = useState<typeof pendingScans[0] | null>(null);
+  const [selectedScan, setSelectedScan] = useState<any>(null);
   const [findings, setFindings] = useState('');
   const [impression, setImpression] = useState('');
-  const [status, setStatus] = useState('normal');
+  const [radiologyRequests, setRadiologyRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const filteredScans = pendingScans.filter(scan =>
-    scan.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    scan.mrNo.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    fetchRadiologyRequests();
+  }, []);
+
+  const fetchRadiologyRequests = async () => {
+    try {
+      const response = await api.getRadiologyRequests();
+      if (response.success) {
+        setRadiologyRequests(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching radiology requests:', error);
+      toast.error('Failed to load radiology requests');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inProgressScans = radiologyRequests.filter(r => r.status === 'in-progress');
+  const pendingScans = radiologyRequests.filter(r => r.status === 'pending');
+  const completedCount = radiologyRequests.filter(r => r.status === 'completed').length;
+  const uploadableScans = radiologyRequests.filter(r => r.status === 'in-progress' || r.status === 'pending');
+
+  const filteredScans = uploadableScans.filter(scan =>
+    scan.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    scan.mrNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    scan.requestNo?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleUploadReport = (scan: typeof pendingScans[0]) => {
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge className="bg-warning text-warning-foreground"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>;
+      case 'in-progress':
+        return <Badge className="bg-primary"><PlayCircle className="w-3 h-3 mr-1" /> In Progress</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const handleStartExam = async (request: any) => {
+    try {
+      const response = await api.updateRadiologyRequest(request.id, { status: 'in-progress' });
+      if (response.success) {
+        setRadiologyRequests(prev => prev.map(r => r.id === request.id ? { ...r, status: 'in-progress' } : r));
+        toast.success(`Started examination for ${request.patientName}`);
+      } else {
+        toast.error(response.message || 'Failed to start exam');
+      }
+    } catch (error) {
+      console.error('Error starting exam:', error);
+      toast.error('Failed to start exam');
+    }
+  };
+
+  const handleUploadReport = (scan: any) => {
     setSelectedScan(scan);
     setFindings('');
     setImpression('');
-    setStatus('normal');
     setIsUploadDialogOpen(true);
   };
 
-  const handleSubmitReport = () => {
-    if (!findings || !impression) {
+  const handleSubmitReport = async () => {
+    if (!findings.trim() || !impression.trim()) {
       toast.error('Please enter findings and impression');
       return;
     }
-    toast.success(`Report uploaded for ${selectedScan?.patient}`);
-    setIsUploadDialogOpen(false);
+    setSubmitting(true);
+    try {
+      const response = await api.updateRadiologyRequest(selectedScan.id, {
+        status: 'completed',
+        report: { findings, impression },
+      });
+      if (response.success) {
+        setRadiologyRequests(prev => prev.map(r => r.id === selectedScan.id ? { ...r, status: 'completed', report: { findings, impression } } : r));
+        toast.success(`Report uploaded for ${selectedScan?.patientName}`);
+        setIsUploadDialogOpen(false);
+        setFindings('');
+        setImpression('');
+        setSelectedScan(null);
+      } else {
+        toast.error(response.message || 'Failed to upload report');
+      }
+    } catch (error) {
+      console.error('Error uploading report:', error);
+      toast.error('Failed to upload report');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout requiredRole="radiologist">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRole="radiologist">
@@ -84,29 +153,29 @@ const UploadReports: React.FC = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">{pendingScans.length}</p>
-                <p className="text-sm text-muted-foreground">Pending Reports</p>
+                <p className="text-sm text-muted-foreground">Pending Exams</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FileImage className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{inProgressScans.length}</p>
+                <p className="text-sm text-muted-foreground">In Progress</p>
               </div>
             </div>
           </div>
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-100 rounded-lg">
-                <FileImage className="w-5 h-5 text-green-600" />
+                <CheckCircle className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">12</p>
-                <p className="text-sm text-muted-foreground">Uploaded Today</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <Upload className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{pendingScans.filter(s => s.priority === 'urgent').length}</p>
-                <p className="text-sm text-muted-foreground">Urgent Cases</p>
+                <p className="text-2xl font-bold">{completedCount}</p>
+                <p className="text-sm text-muted-foreground">Completed</p>
               </div>
             </div>
           </div>
@@ -116,48 +185,62 @@ const UploadReports: React.FC = () => {
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by patient name or MR No..."
+            placeholder="Search by patient name, MR No, or Request No..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        {/* Pending Scans Table */}
+        {/* Scans Table */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>MR No</TableHead>
+                <TableHead>Request No</TableHead>
                 <TableHead>Patient</TableHead>
+                <TableHead>MR No</TableHead>
                 <TableHead>Test Type</TableHead>
                 <TableHead>Requested By</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Priority</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredScans.map((scan) => (
+              {filteredScans.length > 0 ? filteredScans.map((scan) => (
                 <TableRow key={scan.id}>
-                  <TableCell className="font-medium text-primary">{scan.mrNo}</TableCell>
-                  <TableCell>{scan.patient}</TableCell>
-                  <TableCell>{scan.test}</TableCell>
+                  <TableCell className="font-bold text-primary">{scan.requestNo}</TableCell>
+                  <TableCell className="font-medium">{scan.patientName}</TableCell>
+                  <TableCell>{scan.mrNo || '-'}</TableCell>
+                  <TableCell>{scan.test || scan.testType}</TableCell>
                   <TableCell>{scan.doctor}</TableCell>
-                  <TableCell>{scan.requestTime}</TableCell>
-                  <TableCell>
-                    <span className={scan.priority === 'urgent' ? 'badge-cancelled' : 'badge-pending'}>
-                      {scan.priority}
-                    </span>
-                  </TableCell>
+                  <TableCell>{scan.requestDate}</TableCell>
+                  <TableCell>{getStatusBadge(scan.status)}</TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" onClick={() => handleUploadReport(scan)} className="gap-2">
-                      <Upload className="w-4 h-4" />
-                      Upload Report
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      {scan.status === 'pending' && (
+                        <Button size="sm" variant="outline" onClick={() => handleStartExam(scan)}>
+                          <PlayCircle className="w-4 h-4 mr-1" />
+                          Start Exam
+                        </Button>
+                      )}
+                      {scan.status === 'in-progress' && (
+                        <Button size="sm" onClick={() => handleUploadReport(scan)} className="gap-2">
+                          <Upload className="w-4 h-4" />
+                          Upload Report
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    No pending or in-progress scans
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
@@ -168,14 +251,19 @@ const UploadReports: React.FC = () => {
             <DialogHeader>
               <DialogTitle>Upload Radiology Report</DialogTitle>
               <DialogDescription>
-                {selectedScan?.test} for {selectedScan?.patient} ({selectedScan?.mrNo})
+                {selectedScan?.test || selectedScan?.testType} for {selectedScan?.patientName} ({selectedScan?.mrNo || selectedScan?.requestNo})
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Drag & drop image files or click to browse</p>
-                <Button variant="outline" className="mt-3">Choose Files</Button>
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                <div>
+                  <p className="text-sm text-muted-foreground">Patient</p>
+                  <p className="font-medium">{selectedScan?.patientName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Request No</p>
+                  <p className="font-medium">{selectedScan?.requestNo}</p>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -197,24 +285,13 @@ const UploadReports: React.FC = () => {
                   rows={2}
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="abnormal">Abnormal - Follow-up Required</SelectItem>
-                    <SelectItem value="critical">Critical - Immediate Attention</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSubmitReport}>Submit Report</Button>
+              <Button onClick={handleSubmitReport} disabled={submitting}>
+                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                Submit Report
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

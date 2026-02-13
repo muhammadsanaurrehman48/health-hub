@@ -123,6 +123,55 @@ const RadiologyRequests: React.FC = () => {
     }
   };
 
+  const [isViewReportOpen, setIsViewReportOpen] = useState(false);
+  const [viewingReport, setViewingReport] = useState<any>(null);
+
+  const handleViewReport = (request: any) => {
+    setViewingReport(request);
+    setIsViewReportOpen(true);
+  };
+
+  const handlePrintRadReport = (request: any) => {
+    const printWindow = window.open('', '', 'width=600,height=800');
+    if (!printWindow) { alert('Please disable your popup blocker'); return; }
+    const findings = request.report?.findings || 'No findings recorded';
+    const impression = request.report?.impression || 'No impression recorded';
+    const html = [
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Radiology Report - ' + request.requestNo + '</title>',
+      '<style>',
+      'body { font-family: Arial, sans-serif; padding: 30px; max-width: 700px; margin: 0 auto; }',
+      '.header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }',
+      '.header h1 { margin: 0; font-size: 22px; }',
+      '.header p { margin: 2px 0; font-size: 12px; color: #666; }',
+      '.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px; }',
+      '.info-grid .label { font-size: 11px; color: #888; margin-bottom: 2px; }',
+      '.info-grid .value { font-weight: bold; font-size: 14px; }',
+      '.section { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }',
+      '.section h3 { margin-top: 0; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px; }',
+      '.section-text { white-space: pre-wrap; font-size: 14px; line-height: 1.6; }',
+      '.footer { text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 11px; color: #999; }',
+      '@media print { body { padding: 15px; } }',
+      '</style></head><body>',
+      '<div class="header"><h1>AFS MEDICAL</h1><p>Radiology Department</p><p>Karachi | Tel: 021-1234567</p></div>',
+      '<h2 style="text-align:center;margin-bottom:20px;">RADIOLOGY REPORT</h2>',
+      '<div class="info-grid">',
+      '<div><div class="label">Request No</div><div class="value">' + (request.requestNo || '-') + '</div></div>',
+      '<div><div class="label">Date</div><div class="value">' + (request.requestDate || '-') + '</div></div>',
+      '<div><div class="label">Patient</div><div class="value">' + (request.patientName || '-') + '</div></div>',
+      '<div><div class="label">MR No</div><div class="value">' + (request.mrNo || '-') + '</div></div>',
+      '<div><div class="label">Test</div><div class="value">' + (request.test || '-') + '</div></div>',
+      '<div><div class="label">Requested By</div><div class="value">' + (request.doctor || '-') + '</div></div>',
+      '</div>',
+      '<div class="section"><h3>Findings</h3><div class="section-text">' + findings + '</div></div>',
+      '<div class="section"><h3>Impression</h3><div class="section-text">' + impression + '</div></div>',
+      '<div class="footer"><p>Generated: ' + new Date().toLocaleString() + '</p><p>This is a computer-generated report</p></div>',
+      '</body></html>'
+    ].join('\n');
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => { printWindow.focus(); printWindow.print(); }, 300);
+  };
+
   const filteredRequests = radiologyRequests.filter((req) =>
     req.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     req.mrNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -256,11 +305,11 @@ const RadiologyRequests: React.FC = () => {
                             )}
                             {req.status === 'completed' && (
                               <>
-                                <Button variant="outline" size="sm">
-                                  <Image className="w-4 h-4 mr-1" />
-                                  View Images
+                                <Button variant="outline" size="sm" onClick={() => handleViewReport(req)}>
+                                  <FileText className="w-4 h-4 mr-1" />
+                                  View Report
                                 </Button>
-                                <Button variant="outline" size="sm">
+                                <Button variant="outline" size="sm" onClick={() => handlePrintRadReport(req)}>
                                   <Printer className="w-4 h-4 mr-1" />
                                   Print
                                 </Button>
@@ -277,13 +326,137 @@ const RadiologyRequests: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="pending">
-            <Card><CardContent className="pt-6"><p className="text-center text-muted-foreground py-8">Pending requests</p></CardContent></Card>
+            <Card>
+              <CardHeader><CardTitle>Pending Requests</CardTitle></CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Request No</TableHead>
+                      <TableHead>Patient</TableHead>
+                      <TableHead>MR No</TableHead>
+                      <TableHead>Test</TableHead>
+                      <TableHead>Requested By</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {radiologyRequests.filter(r => r.status === 'pending').map((req) => (
+                      <TableRow key={req.id}>
+                        <TableCell className="font-bold text-primary">{req.requestNo}</TableCell>
+                        <TableCell className="font-medium">{req.patientName}</TableCell>
+                        <TableCell>{req.mrNo}</TableCell>
+                        <TableCell>{req.test}</TableCell>
+                        <TableCell>{req.doctor}</TableCell>
+                        <TableCell>{req.requestDate}</TableCell>
+                        <TableCell>
+                          <div className="flex justify-end">
+                            <Button size="sm" onClick={() => handleStartExam(req)}>
+                              <Scan className="w-4 h-4 mr-1" />
+                              Start Exam
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {radiologyRequests.filter(r => r.status === 'pending').length === 0 && (
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No pending requests</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
           <TabsContent value="in-progress">
-            <Card><CardContent className="pt-6"><p className="text-center text-muted-foreground py-8">In-progress requests</p></CardContent></Card>
+            <Card>
+              <CardHeader><CardTitle>In Progress</CardTitle></CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Request No</TableHead>
+                      <TableHead>Patient</TableHead>
+                      <TableHead>MR No</TableHead>
+                      <TableHead>Test</TableHead>
+                      <TableHead>Requested By</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {radiologyRequests.filter(r => r.status === 'in-progress').map((req) => (
+                      <TableRow key={req.id}>
+                        <TableCell className="font-bold text-primary">{req.requestNo}</TableCell>
+                        <TableCell className="font-medium">{req.patientName}</TableCell>
+                        <TableCell>{req.mrNo}</TableCell>
+                        <TableCell>{req.test}</TableCell>
+                        <TableCell>{req.doctor}</TableCell>
+                        <TableCell>{req.requestDate}</TableCell>
+                        <TableCell>
+                          <div className="flex justify-end">
+                            <Button size="sm" onClick={() => handleUploadReport(req)}>
+                              <Upload className="w-4 h-4 mr-1" />
+                              Upload Report
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {radiologyRequests.filter(r => r.status === 'in-progress').length === 0 && (
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No in-progress requests</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
           <TabsContent value="completed">
-            <Card><CardContent className="pt-6"><p className="text-center text-muted-foreground py-8">Completed requests</p></CardContent></Card>
+            <Card>
+              <CardHeader><CardTitle>Completed Reports</CardTitle></CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Request No</TableHead>
+                      <TableHead>Patient</TableHead>
+                      <TableHead>MR No</TableHead>
+                      <TableHead>Test</TableHead>
+                      <TableHead>Requested By</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {radiologyRequests.filter(r => r.status === 'completed').map((req) => (
+                      <TableRow key={req.id}>
+                        <TableCell className="font-bold text-primary">{req.requestNo}</TableCell>
+                        <TableCell className="font-medium">{req.patientName}</TableCell>
+                        <TableCell>{req.mrNo}</TableCell>
+                        <TableCell>{req.test}</TableCell>
+                        <TableCell>{req.doctor}</TableCell>
+                        <TableCell>{req.requestDate}</TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={() => handleViewReport(req)}>
+                              <FileText className="w-4 h-4 mr-1" />
+                              View Report
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handlePrintRadReport(req)}>
+                              <Printer className="w-4 h-4 mr-1" />
+                              Print
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {radiologyRequests.filter(r => r.status === 'completed').length === 0 && (
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No completed reports</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
@@ -345,6 +518,55 @@ const RadiologyRequests: React.FC = () => {
               <Button onClick={handleSaveReport}>
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Save & Complete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {/* View Report Dialog */}
+        <Dialog open={isViewReportOpen} onOpenChange={setIsViewReportOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Radiology Report — {viewingReport?.requestNo}</DialogTitle>
+            </DialogHeader>
+            {viewingReport && (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Patient</p>
+                    <p className="font-medium">{viewingReport.patientName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">MR No</p>
+                    <p className="font-medium">{viewingReport.mrNo}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Test</p>
+                    <p className="font-medium">{viewingReport.test}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Requested By</p>
+                    <p className="font-medium">{viewingReport.doctor}</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-semibold">Findings</Label>
+                  <div className="p-3 bg-muted/20 rounded-lg text-sm whitespace-pre-wrap">
+                    {viewingReport.report?.findings || 'No findings recorded'}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-semibold">Impression</Label>
+                  <div className="p-3 bg-muted/20 rounded-lg text-sm whitespace-pre-wrap">
+                    {viewingReport.report?.impression || 'No impression recorded'}
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsViewReportOpen(false)}>Close</Button>
+              <Button onClick={() => { if (viewingReport) handlePrintRadReport(viewingReport); }}>
+                <Printer className="w-4 h-4 mr-2" />
+                Print Report
               </Button>
             </DialogFooter>
           </DialogContent>
