@@ -313,17 +313,6 @@ class ApiClient {
   }
 
   // Nurse endpoints
-  async recordVitals(data) {
-    return this.request('/nurse/vitals', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async getPatientVitals(patientId) {
-    return this.request(`/nurse/vitals/patient/${patientId}`);
-  }
-
   async addCareNote(data) {
     return this.request('/nurse/care-notes', {
       method: 'POST',
@@ -350,10 +339,6 @@ class ApiClient {
 
   async getCareNotes(patientId) {
     return this.request(`/nurse/care-notes/patient/${patientId}`);
-  }
-
-  async getPatientHistory(patientId) {
-    return this.request(`/patients/${patientId}/history`);
   }
 
   // Billing endpoints
@@ -524,10 +509,6 @@ class ApiClient {
   }
 
   // Queue endpoints (updated for room-based system)
-  async getQueueData(departmentId) {
-    return this.request(`/queue/${departmentId}`);
-  }
-
   async getQueueByRoom(roomNo) {
     return this.request(`/queue/room/${roomNo}`);
   }

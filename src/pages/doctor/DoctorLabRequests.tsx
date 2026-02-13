@@ -186,11 +186,8 @@ const DoctorLabRequests: React.FC = () => {
       for (const test of selectedTests) {
         await api.createLabRequest({
           patientId: patient?.id,
-          patientName: patient?.name,
           mrNo: selectedPatient,
-          testName: test,
-          requestDate: new Date().toISOString(),
-          status: 'pending',
+          test: test,
         });
       }
       toast.success(`${selectedTests.length} lab test(s) requested successfully!`);

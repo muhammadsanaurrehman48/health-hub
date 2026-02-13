@@ -168,6 +168,7 @@ const DoctorReferrals: React.FC = () => {
 
     try {
       const response = await api.createReferral({
+        patientId: selectedPatientId || undefined,
         patientName,
         forceNo,
         patientAge: patientAge ? parseInt(patientAge) : undefined,

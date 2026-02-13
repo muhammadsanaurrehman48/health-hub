@@ -145,11 +145,8 @@ const DoctorRadiologyRequests: React.FC = () => {
       for (const test of selectedTests) {
         await api.createRadiologyRequest({
           patientId: patient?.id,
-          patientName: patient?.name || 'Unknown',
           mrNo: selectedPatient,
-          testName: test,
-          requestDate: new Date().toISOString(),
-          status: 'pending',
+          testType: test,
         });
       }
       toast.success(`${selectedTests.length} radiology test(s) requested successfully!`);
