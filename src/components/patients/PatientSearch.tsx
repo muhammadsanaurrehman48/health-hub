@@ -206,7 +206,15 @@ const PatientSearch: React.FC = () => {
                           <Badge variant="outline">{patient.bloodGroup}</Badge>
                         </TableCell>
                         <TableCell>{patient.lastVisit}</TableCell>
-                        <TableCell>\n                          <Badge\n                            variant={patient.status === 'active' ? 'default' : 'secondary'}\n                            className={patient.status === 'active' ? 'bg-success text-success-foreground' : ''}\n                          >\n                            {patient.status}\n                          </Badge>\n                        </TableCell>\n                      </TableRow>
+                        <TableCell>
+                          <Badge
+                            variant={patient.status === 'active' ? 'default' : 'secondary'}
+                            className={patient.status === 'active' ? 'bg-success text-success-foreground' : ''}
+                          >
+                            {patient.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
                     ))
                   )}
                 </TableBody>

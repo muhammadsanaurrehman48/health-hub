@@ -411,13 +411,10 @@ const AppointmentsPage: React.FC = () => {
                       <SelectValue placeholder="Select room number" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="101">Room 101</SelectItem>
-                      <SelectItem value="102">Room 102</SelectItem>
-                      <SelectItem value="103">Room 103</SelectItem>
-                      <SelectItem value="104">Room 104</SelectItem>
-                      <SelectItem value="105">Room 105</SelectItem>
-                      <SelectItem value="OPD-1">OPD-1</SelectItem>
-                      <SelectItem value="OPD-2">OPD-2</SelectItem>
+                      <SelectItem value="1">Room 1</SelectItem>
+                      <SelectItem value="2">Room 2</SelectItem>
+                      <SelectItem value="3">Room 3</SelectItem>
+                      <SelectItem value="4">Room 4</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -499,7 +496,7 @@ const AppointmentsPage: React.FC = () => {
                     const patientName = apt.patientName || apt.patient || 'Unknown';
                     const mrNo = apt.mrNo || apt.patientNo || '-';
                     const doctor = apt.doctor || apt.doctorName || 'Unknown';
-                    const roomNo = apt.roomNo || 'OPD-1';
+                    const roomNo = apt.roomNo || '1';
                     
                     return (
                       <TableRow key={apt.id || apt._id}>

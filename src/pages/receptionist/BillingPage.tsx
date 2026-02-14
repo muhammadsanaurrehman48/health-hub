@@ -30,14 +30,6 @@ import {
 } from 'lucide-react';
 import BillingInvoiceTemplate from '@/components/templates/BillingInvoiceTemplate';
 
-const serviceItems = [
-  { id: '1', name: 'OPD Consultation', department: 'OPD', price: 500 },
-  { id: '2', name: 'Blood CBC Test', department: 'Laboratory', price: 1200 },
-  { id: '3', name: 'X-Ray Chest', department: 'Radiology', price: 2500 },
-  { id: '4', name: 'ECG', department: 'Cardiology', price: 1500 },
-  { id: '5', name: 'Ultrasound', department: 'Radiology', price: 3500 },
-];
-
 interface BillItem {
   id: string;
   name: string;
@@ -50,7 +42,7 @@ interface BillItem {
 interface Patient {
   id: string;
   patientNo: string;
-  patientType: 'ASF' | 'ASF_FAMILY' | 'CIVILIAN';
+  patientType: 'ASF' | 'ASF_FAMILY' | 'ASF_SCHOOL' | 'CIVILIAN';
   forceNo?: string;
   firstName: string;
   lastName: string;
@@ -77,7 +69,9 @@ const BillingPage: React.FC = () => {
 
   // New bill form
   const [billItems, setBillItems] = useState<BillItem[]>([]);
-  const [selectedService, setSelectedService] = useState('');
+  const [customServiceName, setCustomServiceName] = useState('');
+  const [customServicePrice, setCustomServicePrice] = useState('');
+  const [customServiceDept, setCustomServiceDept] = useState('OPD');
   const [quantity, setQuantity] = useState('1');
   const [creatingBill, setCreatingBill] = useState(false);
 
@@ -160,23 +154,30 @@ const BillingPage: React.FC = () => {
   };
 
   const addItemToBill = () => {
-    const service = serviceItems.find((s) => s.id === selectedService);
-    if (service) {
-      const qty = parseInt(quantity) || 1;
-      setBillItems([
-        ...billItems,
-        {
-          id: Date.now().toString(),
-          name: service.name,
-          department: service.department,
-          quantity: qty,
-          unitPrice: service.price,
-          total: service.price * qty,
-        },
-      ]);
-      setSelectedService('');
-      setQuantity('1');
+    if (!customServiceName || !customServicePrice) {
+      toast.error('Please enter service name and price');
+      return;
     }
+    const price = parseFloat(customServicePrice);
+    if (isNaN(price) || price <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    const qty = parseInt(quantity) || 1;
+    setBillItems([
+      ...billItems,
+      {
+        id: Date.now().toString(),
+        name: customServiceName,
+        department: customServiceDept,
+        quantity: qty,
+        unitPrice: price,
+        total: price * qty,
+      },
+    ]);
+    setCustomServiceName('');
+    setCustomServicePrice('');
+    setQuantity('1');
   };
 
   const removeItemFromBill = (id: string) => {
@@ -185,9 +186,9 @@ const BillingPage: React.FC = () => {
 
   const subtotal = billItems.reduce((sum, item) => sum + item.total, 0);
   
-  // Conditional billing based on patient type
-  const isAutoPayment = selectedPatient?.patientType === 'ASF' || selectedPatient?.patientType === 'ASF_FAMILY';
-  const discount = isAutoPayment ? subtotal : 0; // Full discount for ASF members
+  // ASF Staff = free, others pay
+  const isFreeService = selectedPatient?.patientType === 'ASF';
+  const discount = isFreeService ? subtotal : 0;
   const tax = 0;
   const grandTotal = Math.max(subtotal - discount + tax, 0);
 
@@ -244,33 +245,29 @@ const BillingPage: React.FC = () => {
   };
 
   const sampleInvoice = {
-    invoiceNo: 'INV-2025-0456',
-    date: '2025-02-01',
-    dueDate: '2025-03-01',
+    invoiceNo: 'INV-2026-0001',
+    date: '2026-02-14',
+    dueDate: '2026-03-14',
     status: 'paid' as const,
     patient: {
-      name: 'Muhammad Ali',
-      mrNo: 'MR-001234',
-      forceNo: 'F-12345',
-      phone: '0300-1234567',
-      address: 'House 123, Street 45, Rawalpindi',
+      name: 'Sample Patient',
+      mrNo: 'MR-000001',
+      forceNo: '',
+      phone: '',
+      address: '',
     },
     items: [
-      { description: 'OPD Consultation', department: 'OPD', quantity: 1, unitPrice: 500, total: 500 },
-      { description: 'Blood CBC Test', department: 'Laboratory', quantity: 1, unitPrice: 1200, total: 1200 },
-      { description: 'X-Ray Chest', department: 'Radiology', quantity: 1, unitPrice: 2500, total: 2500 },
-      { description: 'ECG', department: 'Cardiology', quantity: 1, unitPrice: 1500, total: 1500 },
-      { description: 'Medicines', department: 'Pharmacy', quantity: 1, unitPrice: 9800, total: 9800 },
+      { description: 'OPD Consultation Fee', department: 'OPD', quantity: 1, unitPrice: 100, total: 100 },
     ],
-    subtotal: 15500,
+    subtotal: 100,
     discount: 0,
     tax: 0,
-    grandTotal: 15500,
-    amountPaid: 15500,
+    grandTotal: 100,
+    amountPaid: 100,
     balance: 0,
     paymentMethod: 'Cash',
-    paymentRef: 'RCPT-2025-0456',
-    createdBy: 'Receptionist - Ali Hassan',
+    paymentRef: '',
+    createdBy: 'Receptionist',
   };
 
   const handlePrintInvoice = (invoice: any) => {
@@ -486,9 +483,9 @@ const BillingPage: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Badge 
-                            className={inv.autoPayment ? 'bg-green-600' : inv.paymentStatus === 'pending' ? 'bg-yellow-600' : inv.paymentStatus === 'paid' ? 'bg-green-600' : 'bg-blue-600'}
+                            className={inv.paymentStatus === 'pending' ? 'bg-yellow-600' : inv.paymentStatus === 'paid' ? 'bg-green-600' : 'bg-blue-600'}
                           >
-                            {inv.autoPayment ? 'Auto-Paid' : inv.paymentStatus || 'pending'}
+                            {inv.paymentStatus || 'pending'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -531,7 +528,7 @@ const BillingPage: React.FC = () => {
                             <Button variant="ghost" size="icon" onClick={() => handlePrintInvoice(inv)} title="Print Invoice">
                               <Printer className="w-4 h-4" />
                             </Button>
-                            {(inv.paymentStatus === 'pending' || inv.paymentStatus === 'partial') && !inv.autoPayment && (
+                            {(inv.paymentStatus === 'pending' || inv.paymentStatus === 'partial') && (
                               <Button 
                                 variant="ghost" 
                                 size="icon"
@@ -645,9 +642,19 @@ const BillingPage: React.FC = () => {
                           )}
                         </div>
 
-                        {(selectedPatient.patientType === 'ASF' || selectedPatient.patientType === 'ASF_FAMILY') && (
+                        {selectedPatient.patientType === 'ASF' && (
                           <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
-                            ✅ ASF/ASF Family member - Services will be provided free of charge
+                            ✅ ASF Staff - Services will be provided free of charge
+                          </div>
+                        )}
+                        {(selectedPatient.patientType === 'ASF_FAMILY' || selectedPatient.patientType === 'ASF_SCHOOL') && (
+                          <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                            ℹ️ {selectedPatient.patientType === 'ASF_FAMILY' ? 'ASF Family' : 'ASF School/ASFF'} - OPD Rs. 30, Lab/X-Ray at ASF rates, Medicines free
+                          </div>
+                        )}
+                        {selectedPatient.patientType === 'CIVILIAN' && (
+                          <div className="p-2 bg-orange-50 border border-orange-200 rounded text-sm text-orange-800">
+                            💳 Civilian (Private) - Full charges apply
                           </div>
                         )}
 
@@ -671,19 +678,36 @@ const BillingPage: React.FC = () => {
                   <CardContent>
                     <div className="flex gap-4 mb-4">
                       <div className="flex-1">
-                        <Label>Select Service</Label>
-                        <Select value={selectedService} onValueChange={setSelectedService}>
+                        <Label>Service Name</Label>
+                        <Input
+                          placeholder="Enter service name"
+                          value={customServiceName}
+                          onChange={(e) => setCustomServiceName(e.target.value)}
+                        />
+                      </div>
+                      <div className="w-32">
+                        <Label>Department</Label>
+                        <Select value={customServiceDept} onValueChange={setCustomServiceDept}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Choose a service" />
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {serviceItems.map((item) => (
-                              <SelectItem key={item.id} value={item.id}>
-                                {item.name} - Rs. {item.price} ({item.department})
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="OPD">OPD</SelectItem>
+                            <SelectItem value="Laboratory">Laboratory</SelectItem>
+                            <SelectItem value="Radiology">Radiology</SelectItem>
+                            <SelectItem value="Pharmacy">Pharmacy</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="w-28">
+                        <Label>Price (Rs.)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={customServicePrice}
+                          onChange={(e) => setCustomServicePrice(e.target.value)}
+                        />
                       </div>
                       <div className="w-24">
                         <Label>Qty</Label>
@@ -753,10 +777,10 @@ const BillingPage: React.FC = () => {
                     <CardTitle>Bill Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {isAutoPayment && (
+                    {isFreeService && (
                       <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
                         <p className="font-semibold mb-1">✅ Free Services</p>
-                        <p>Full amount will be waived for ASF family members</p>
+                        <p>Full amount will be waived for ASF Staff</p>
                       </div>
                     )}
 
@@ -774,9 +798,9 @@ const BillingPage: React.FC = () => {
                       <span className="text-muted-foreground">Tax:</span>
                       <span className="font-medium">Rs. {tax.toLocaleString()}</span>
                     </div>
-                    <div className={`flex justify-between py-3 px-3 rounded-lg ${isAutoPayment ? 'bg-green-100' : 'bg-primary/10'}`}>
+                    <div className={`flex justify-between py-3 px-3 rounded-lg ${isFreeService ? 'bg-green-100' : 'bg-primary/10'}`}>
                       <span className="font-semibold">Grand Total:</span>
-                      <span className={`font-bold text-lg ${isAutoPayment ? 'text-green-700' : 'text-primary'}`}>
+                      <span className={`font-bold text-lg ${isFreeService ? 'text-green-700' : 'text-primary'}`}>
                         Rs. {grandTotal.toLocaleString()}
                       </span>
                     </div>
@@ -828,7 +852,7 @@ const BillingPage: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {invoices
-                        .filter((inv) => inv.paymentStatus !== 'paid' && !inv.autoPayment)
+                        .filter((inv) => inv.paymentStatus !== 'paid')
                         .map((inv) => (
                           <SelectItem key={inv.invoiceNo} value={inv.invoiceNo}>
                             {inv.invoiceNo} - {inv.patient?.name || inv.patientName || 'N/A'} (Rs.{' '}

@@ -19,8 +19,8 @@ interface InvoiceData {
   invoiceNo: string;
   date: string;
   dueDate: string;
-  status: 'paid' | 'pending' | 'partial' | 'auto-paid';
-  patientType?: 'ASF' | 'ASF_FAMILY' | 'CIVILIAN';
+  status: 'paid' | 'pending' | 'partial';
+  patientType?: 'ASF' | 'ASF_FAMILY' | 'ASF_SCHOOL' | 'CIVILIAN';
   patient: {
     name: string;
     patientNo?: string;
@@ -100,7 +100,7 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
     }
 
     let paymentStatusHTML = '';
-    if (data.status === 'paid' || data.status === 'auto-paid') {
+    if (data.status === 'paid') {
       paymentStatusHTML = '<div class="payment-status paid">✓ PAYMENT RECEIVED';
       if (data.paymentMethod) {
         paymentStatusHTML += '<div style="font-size: 8px;">' + data.paymentMethod + '</div>';
@@ -125,8 +125,8 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
       patientTypeHTML = 'Type: ' + data.patientType;
     }
 
-    const statusClass = (data.status === 'paid' || data.status === 'auto-paid') ? 'paid' : 'pending';
-    const statusText = data.status === 'auto-paid' ? 'AUTO-PAID (GOVT)' : data.status.toUpperCase();
+    const statusClass = data.status === 'paid' ? 'paid' : 'pending';
+    const statusText = data.status.toUpperCase();
 
     const invoiceHTML = [
       '<!DOCTYPE html>',
@@ -234,7 +234,6 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
-      case 'auto-paid':
         return 'bg-success text-success-foreground';
       case 'pending':
         return 'bg-warning text-warning-foreground';
@@ -246,7 +245,6 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
   };
 
   const getStatusText = (status: string) => {
-    if (status === 'auto-paid') return 'AUTO-PAID (Government)';
     return status.toUpperCase();
   };
 
@@ -387,11 +385,11 @@ const BillingInvoiceTemplate: React.FC<BillingInvoiceTemplateProps> = ({ data })
 
           <Separator className="my-3" />
 
-          {(data.status === 'paid' || data.status === 'auto-paid') && (
+          {data.status === 'paid' && (
             <div className="text-center bg-success/10 border border-success rounded p-2 mb-4">
               <p className="text-xs font-semibold text-success flex items-center justify-center gap-1">
                 <CheckCircle className="w-4 h-4" />
-                {data.status === 'auto-paid' ? 'AUTO-PAID - GOVT HOSPITAL' : 'PAYMENT RECEIVED'}
+                PAYMENT RECEIVED
               </p>
             </div>
           )}

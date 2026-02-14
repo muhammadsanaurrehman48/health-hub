@@ -36,27 +36,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, Search, Receipt, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
-const departments = ['OPD', 'IPD', 'Pharmacy', 'Laboratory', 'Radiology', 'Emergency', 'Surgery'];
+const departments = ['OPD', 'Laboratory', 'Radiology', 'Pharmacy'];
 
-const serviceCharges: Record<string, { service: string; price: number }[]> = {
-  OPD: [
-    { service: 'Consultation Fee', price: 1500 },
-    { service: 'Follow-up Visit', price: 800 },
-    { service: 'Emergency Consultation', price: 2500 },
-  ],
-  Laboratory: [
-    { service: 'Complete Blood Count', price: 800 },
-    { service: 'Lipid Profile', price: 1500 },
-    { service: 'Liver Function Test', price: 1200 },
-    { service: 'Thyroid Panel', price: 2000 },
-  ],
-  Radiology: [
-    { service: 'X-Ray', price: 1000 },
-    { service: 'CT Scan', price: 8000 },
-    { service: 'MRI', price: 15000 },
-    { service: 'Ultrasound', price: 2500 },
-  ],
-};
+// Invoices are primarily auto-generated from lab/radiology/OPD/pharmacy flows
+// This page allows manual invoice creation with custom items
+const serviceCharges: Record<string, { service: string; price: number }[]> = {};
 
 const GenerateInvoice: React.FC = () => {
   const [patientMR, setPatientMR] = useState('');

@@ -49,30 +49,10 @@ import {
 }from 'lucide-react';
 
 const availableTests = [
-  'Chest X-Ray PA',
-  'Chest X-Ray Lateral',
-  'Abdominal X-Ray',
-  'Ultrasound Abdomen',
-  'Ultrasound Pelvis',
-  'CT Scan Brain',
-  'CT Scan Chest',
-  'CT Scan Abdomen',
-  'MRI Brain',
-  'MRI Spine',
-  'MRI Knee',
-  'Echo Cardiogram',
-  'X-Ray Skull',
-  'X-Ray Pelvis',
-  'X-Ray Knee',
-  'X-Ray Shoulder',
-  'Ultrasound KUB',
-  'CT Scan Pelvis',
-  'MRI Shoulder',
-  'MRI Lumbar Spine',
-  'Doppler Ultrasound',
-  'Mammography',
-  'Bone Densitometry (DEXA)',
-  'Fluoroscopy',
+  'Chest PA',
+  'L/Spine AP Lateral',
+  'Knee Joint Lateral',
+  'Cervical Spine AP Lateral',
 ];
 
 const DoctorRadiologyRequests: React.FC = () => {

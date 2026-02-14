@@ -254,7 +254,7 @@ const EntriesPage: React.FC = () => {
       const appointmentData = {
         patientId: selectedPatient.id,
         doctorId: selectedDoctor.id,
-        roomNo: 'OPD-1', // Default room
+        roomNo: '1', // Default room
         date: new Date().toISOString().split('T')[0],
         time: format(new Date(), 'HH:mm'),
         reason: 'OPD Consultation',

@@ -172,15 +172,16 @@ const PatientRegistrationForm: React.FC = () => {
                     <SelectValue placeholder="Select Patient Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ASF">ASF (Armed Services)</SelectItem>
+                    <SelectItem value="ASF">ASF Staff</SelectItem>
                     <SelectItem value="ASF_FAMILY">ASF Family</SelectItem>
-                    <SelectItem value="CIVILIAN">Civilian</SelectItem>
+                    <SelectItem value="ASF_SCHOOL">ASF School / ASFF</SelectItem>
+                    <SelectItem value="CIVILIAN">Civilian (Private)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               {/* Force No - Only for ASF and ASF_FAMILY */}
-              {(patientType === 'ASF' || patientType === 'ASF_FAMILY') && (
+              {(patientType === 'ASF' || patientType === 'ASF_FAMILY' || patientType === 'ASF_SCHOOL') && (
                 <div className="space-y-2">
                   <Label htmlFor="forceNo">Force No *</Label>
                   <Input
