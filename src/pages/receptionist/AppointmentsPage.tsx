@@ -40,6 +40,29 @@ import {
   Loader2,
 } from 'lucide-react';
 
+const allowedRooms = ['1', '2', '3', '4'];
+
+const getAppointmentDateKey = (appointment: any) => {
+  const rawDate = appointment?.date || appointment?.appointmentDate || appointment?.appointment_date || appointment?.createdAt;
+  if (!rawDate) return null;
+  const parsed = new Date(rawDate);
+  return Number.isNaN(parsed.getTime()) ? null : format(parsed, 'yyyy-MM-dd');
+};
+
+const getAppointmentTimestamp = (appointment: any) => {
+  const raw = appointment?.createdAt || appointment?.date || appointment?.appointmentDate || appointment?.appointment_date;
+  const parsed = raw ? new Date(raw).getTime() : 0;
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const sortAppointmentsDesc = (items: any[]) =>
+  [...items].sort((a, b) => {
+    const timeDiff = getAppointmentTimestamp(b) - getAppointmentTimestamp(a);
+    if (timeDiff !== 0) return timeDiff;
+    const tokenDiff = (Number(b?.token) || 0) - (Number(a?.token) || 0);
+    return tokenDiff;
+  });
+
 const AppointmentsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -53,7 +76,7 @@ const AppointmentsPage: React.FC = () => {
   const [newPatientName, setNewPatientName] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
-  const [newDoctor, setNewDoctor] = useState('');
+  const [newDoctorId, setNewDoctorId] = useState('');
   const [newRoomNo, setNewRoomNo] = useState('');
 
   useEffect(() => {
@@ -71,7 +94,7 @@ const AppointmentsPage: React.FC = () => {
         // Handle appointments
         if (appointmentsResult.status === 'fulfilled' && appointmentsResult.value?.success) {
           const appointmentsData = appointmentsResult.value.data || [];
-          setAppointments(appointmentsData);
+          setAppointments(sortAppointmentsDesc(appointmentsData));
           console.log('✅ Appointments loaded:', appointmentsData.length, 'appointments');
           if (appointmentsData.length > 0) {
             console.log('Sample appointment structure:', appointmentsData[0]);
@@ -84,11 +107,12 @@ const AppointmentsPage: React.FC = () => {
         if (doctorsResult.status === 'fulfilled' && doctorsResult.value?.success) {
           const doctorsList = Array.isArray(doctorsResult.value.data) ? doctorsResult.value.data : [];
           const formattedDoctors = doctorsList.map((doc: any) => ({
-            id: doc.id || doc._id,
+            id: String(doc.id || doc._id || ''),
             name: doc.name || (doc.firstName && doc.lastName ? `${doc.firstName} ${doc.lastName}` : 'Unknown'),
             department: doc.department || 'OPD',
             slots: doc.slots || doc.available_slots || 10,
             max_slots: doc.max_slots || 10,
+            roomNo: doc.roomNo || doc.room || doc.assignedRoom || '',
           }));
           setDoctors(formattedDoctors);
           console.log('✅ Doctors loaded successfully:', formattedDoctors.length, 'doctors');
@@ -132,6 +156,9 @@ const AppointmentsPage: React.FC = () => {
     return () => clearInterval(refreshInterval);
   }, []);
 
+  const selectedDoctor = doctors.find((doc) => doc.id === newDoctorId);
+  const assignedRoomNo = selectedDoctor?.roomNo ? String(selectedDoctor.roomNo) : '';
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'scheduled':
@@ -164,7 +191,7 @@ const AppointmentsPage: React.FC = () => {
         ]);
         
         if (appointmentsRes?.success) {
-          setAppointments(appointmentsRes.data || []);
+          setAppointments(sortAppointmentsDesc(appointmentsRes.data || []));
           console.log('✅ Appointments refreshed');
         }
         
@@ -195,7 +222,7 @@ const AppointmentsPage: React.FC = () => {
       toast.error('Patient is required');
       return;
     }
-    if (!newDoctor) {
+    if (!newDoctorId) {
       toast.error('Doctor is required');
       return;
     }
@@ -207,10 +234,23 @@ const AppointmentsPage: React.FC = () => {
     try {
       // Find patient and doctor from lists
       const selectedPatient = patients.find(p => p.id === selectedPatientId) || patients.find(p => p.name === newPatientName);
-      const selectedDoctor = doctors.find(d => d.name === newDoctor);
+      const selectedDoctor = doctors.find(d => d.id === newDoctorId);
       
       if (!selectedPatient || !selectedDoctor) {
         toast.error('Invalid selection');
+        return;
+      }
+
+      const doctorAssignedRoom = selectedDoctor.roomNo ? String(selectedDoctor.roomNo) : '';
+      const roomToUse = doctorAssignedRoom || newRoomNo;
+
+      if (!roomToUse) {
+        toast.error('Room number is required');
+        return;
+      }
+
+      if (!allowedRooms.includes(roomToUse)) {
+        toast.error('Please choose a valid room (1-4)');
         return;
       }
       
@@ -226,7 +266,7 @@ const AppointmentsPage: React.FC = () => {
       const appointmentData = {
         patientId: selectedPatient.id,
         doctorId: selectedDoctor.id || selectedDoctor._id,
-        roomNo: newRoomNo,
+        roomNo: roomToUse,
         date: format(selectedDate, 'yyyy-MM-dd'),
         reason: 'Consultation',
       };
@@ -250,7 +290,7 @@ const AppointmentsPage: React.FC = () => {
         setNewPatientName('');
         setSelectedPatientId('');
         setPatientSearch('');
-        setNewDoctor('');
+        setNewDoctorId('');
         setNewRoomNo('');
         
         // Refresh both appointments AND doctors list to show updated slots
@@ -264,7 +304,7 @@ const AppointmentsPage: React.FC = () => {
         console.log('👨‍⚕️ Fresh doctors data with updated slots:', doctorsRes?.data?.length, 'doctors');
         
         if (appointmentsRes?.success) {
-          setAppointments(appointmentsRes.data || []);
+          setAppointments(sortAppointmentsDesc(appointmentsRes.data || []));
           console.log('✅ Appointments state updated');
         }
         
@@ -326,8 +366,12 @@ const AppointmentsPage: React.FC = () => {
     }
   };
 
+  const todayKey = format(new Date(), 'yyyy-MM-dd');
+  const todaysAppointments = appointments.filter((apt) => getAppointmentDateKey(apt) === todayKey);
+  const sortedAppointments = sortAppointmentsDesc(todaysAppointments);
+
   // Filter with fallback for both old and new field names
-  const filteredAppointments = appointments.filter((apt) => {
+  const filteredAppointments = sortedAppointments.filter((apt) => {
     const patientName = apt.patientName || apt.patient || 'Unknown';
     const mrNo = String(apt.mrNo || apt.patientNo || '');
     const searchLower = searchQuery.toLowerCase();
@@ -350,7 +394,7 @@ const AppointmentsPage: React.FC = () => {
     .slice(0, 25);
   
   console.log('🔍 Filter Debug:', {
-    totalAppointments: appointments.length,
+    totalAppointments: sortedAppointments.length,
     filteredCount: filteredAppointments.length,
     searchQuery,
     firstAppointmentKeys: appointments[0] ? Object.keys(appointments[0]) : 'none',
@@ -436,15 +480,23 @@ const AppointmentsPage: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Doctor <span className="text-destructive">*</span></Label>
-                  <Select value={newDoctor} onValueChange={setNewDoctor} disabled={doctors.length === 0}>
+                  <Select
+                    value={newDoctorId}
+                    onValueChange={(value) => {
+                      setNewDoctorId(value);
+                      const doctor = doctors.find((doc) => doc.id === value);
+                      setNewRoomNo(doctor?.roomNo ? String(doctor.roomNo) : '');
+                    }}
+                    disabled={doctors.length === 0}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder={doctors.length === 0 ? "No doctors available" : "Select doctor"} />
                     </SelectTrigger>
                     {doctors.length > 0 && (
                       <SelectContent>
                         {doctors.map((doc) => (
-                          <SelectItem key={doc.id || doc._id} value={doc.name}>
-                            {doc.name} {doc.department ? `- ${doc.department}` : ''}
+                          <SelectItem key={doc.id} value={doc.id}>
+                            {doc.name} {doc.department ? `- ${doc.department}` : ''} {doc.roomNo ? `(Room ${doc.roomNo})` : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -453,17 +505,23 @@ const AppointmentsPage: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Consultation Room <span className="text-destructive">*</span></Label>
-                  <Select value={newRoomNo} onValueChange={setNewRoomNo}>
+                  <Select
+                    value={assignedRoomNo || newRoomNo}
+                    onValueChange={setNewRoomNo}
+                    disabled={!!assignedRoomNo}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select room number" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Room 1</SelectItem>
-                      <SelectItem value="2">Room 2</SelectItem>
-                      <SelectItem value="3">Room 3</SelectItem>
-                      <SelectItem value="4">Room 4</SelectItem>
+                      {allowedRooms.map((room) => (
+                        <SelectItem key={room} value={room}>{`Room ${room}`}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                  {assignedRoomNo && (
+                    <p className="text-xs text-muted-foreground">Room is locked to the doctor&apos;s assignment.</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Date <span className="text-destructive">*</span></Label>
@@ -534,7 +592,7 @@ const AppointmentsPage: React.FC = () => {
                 {filteredAppointments.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
-                      {appointments.length === 0 ? 'No appointments found' : 'No results match your search'}
+                      {sortedAppointments.length === 0 ? 'No appointments found for today' : 'No results match your search'}
                     </TableCell>
                   </TableRow>
                 ) : (

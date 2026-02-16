@@ -25,7 +25,7 @@ const relationOptions = [
   { value: 'other', label: 'Other' },
 ];
 
-type PatientType = 'ASF' | 'ASF_FAMILY' | 'CIVILIAN';
+type PatientType = 'ASF' | 'ASF_FOUNDATION' | 'CIVILIAN';
 
 const PatientRegistrationForm: React.FC = () => {
   const navigate = useNavigate();
@@ -44,6 +44,11 @@ const PatientRegistrationForm: React.FC = () => {
   const [address, setAddress] = useState('');
   const emptyFamilyMember = { name: '', gender: '', dateOfBirth: '', bloodGroup: '', relationToHead: '', phone: '', cnic: '' };
   const [familyMembers, setFamilyMembers] = useState([emptyFamilyMember]);
+
+  const isAsfStaffType = patientType === 'ASF';
+  const isFoundationType = patientType === 'ASF_FOUNDATION';
+  const isCivilianType = patientType === 'CIVILIAN';
+  const requiresAddress = isCivilianType || isFoundationType;
 
   const formatCnic = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 13);
@@ -76,9 +81,6 @@ const PatientRegistrationForm: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const isCivilian = patientType === 'CIVILIAN';
-      const isAsf = patientType === 'ASF' || patientType === 'ASF_FAMILY';
-
       if (
         !name.trim() ||
         !cnic.trim() ||
@@ -86,8 +88,8 @@ const PatientRegistrationForm: React.FC = () => {
         !gender ||
         !dateOfBirth ||
         !bloodGroup ||
-        (isAsf && (!forceNo.trim() || !unit.trim() || !rank.trim())) ||
-        (isCivilian && !address.trim())
+        (isAsfStaffType && (!forceNo.trim() || !unit.trim() || !rank.trim())) ||
+        (requiresAddress && !address.trim())
       ) {
         toast.error('Please fill in all required fields for the selected patient type');
         setIsLoading(false);
@@ -98,7 +100,7 @@ const PatientRegistrationForm: React.FC = () => {
         return fm.name || fm.gender || fm.dateOfBirth || fm.bloodGroup || fm.relationToHead || fm.phone || fm.cnic;
       });
 
-      if (patientType === 'ASF') {
+      if (isAsfStaffType) {
         const incomplete = filteredFamilyMembers.some((fm) => !fm.name.trim() || !fm.gender || !fm.dateOfBirth || !fm.bloodGroup || !fm.relationToHead);
         if (incomplete) {
           toast.error('Please complete all required fields for each family member (name, relation, gender, DOB, blood group)');
@@ -115,18 +117,18 @@ const PatientRegistrationForm: React.FC = () => {
         name: name.trim(),
         firstName: firstNamePart,
         lastName: derivedLastName,
-        forceNo: isAsf ? forceNo.trim() : undefined,
-        unit: isAsf ? unit.trim() : undefined,
-        rank: isAsf ? rank.trim() : undefined,
+        forceNo: isAsfStaffType ? forceNo.trim() : undefined,
+        unit: isAsfStaffType ? unit.trim() : undefined,
+        rank: isAsfStaffType ? rank.trim() : undefined,
         cnic: cnic.trim(),
         phone: phone.trim(),
         contactNo: phone.trim(),
         dateOfBirth,
         bloodGroup,
         gender,
-        address: isCivilian ? address.trim() : undefined,
+        address: requiresAddress ? address.trim() : undefined,
         familyMembers:
-          patientType === 'ASF'
+          isAsfStaffType
             ? filteredFamilyMembers.map((fm) => ({
                 ...fm,
                 name: fm.name.trim(),
@@ -153,9 +155,7 @@ const PatientRegistrationForm: React.FC = () => {
     }
   };
 
-  const isAsf = patientType === 'ASF' || patientType === 'ASF_FAMILY';
-  const isCivilian = patientType === 'CIVILIAN';
-  const isAsfStaff = patientType === 'ASF';
+  const isAsfStaff = isAsfStaffType;
 
   return (
     <div className="space-y-6">
@@ -188,13 +188,13 @@ const PatientRegistrationForm: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ASF">ASF Staff</SelectItem>
-                  <SelectItem value="ASF_FAMILY">ASF Family</SelectItem>
+                  <SelectItem value="ASF_FOUNDATION">ASF Foundation / School</SelectItem>
                   <SelectItem value="CIVILIAN">Civilian</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {isAsf && (
+            {isAsfStaff && (
               <div className="space-y-2">
                 <Label htmlFor="forceNo">Force No *</Label>
                 <Input
@@ -207,7 +207,7 @@ const PatientRegistrationForm: React.FC = () => {
               </div>
             )}
 
-            {isAsf && (
+            {isAsfStaff && (
               <div className="space-y-2">
                 <Label htmlFor="unit">Unit *</Label>
                 <Select value={unit} onValueChange={setUnit} required>
@@ -225,7 +225,7 @@ const PatientRegistrationForm: React.FC = () => {
               </div>
             )}
 
-            {isAsf && (
+            {isAsfStaff && (
               <div className="space-y-2">
                 <Label htmlFor="rank">Rank *</Label>
                 <Input
@@ -337,13 +337,13 @@ const PatientRegistrationForm: React.FC = () => {
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="address">Address {isCivilian ? '*' : '(optional for ASF)'}</Label>
+              <Label htmlFor="address">Address {requiresAddress ? '*' : '(optional for ASF Staff)'}</Label>
               <Textarea
                 id="address"
                 placeholder="House / Street / City"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                required={isCivilian}
+                required={requiresAddress}
               />
             </div>
           </CardContent>

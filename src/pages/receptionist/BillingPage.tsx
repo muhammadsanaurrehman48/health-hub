@@ -42,7 +42,7 @@ interface BillItem {
 interface Patient {
   id: string;
   patientNo: string;
-  patientType: 'ASF' | 'ASF_FAMILY' | 'ASF_SCHOOL' | 'CIVILIAN';
+  patientType: 'ASF' | 'ASF_FOUNDATION' | 'ASF_FAMILY' | 'ASF_SCHOOL' | 'CIVILIAN';
   forceNo?: string;
   firstName: string;
   lastName: string;
@@ -51,6 +51,22 @@ interface Patient {
   address?: string;
   gender?: string;
 }
+
+const FOUNDATION_TYPES = ['ASF_FOUNDATION', 'ASF_SCHOOL'] as const;
+const LEGACY_FAMILY_TYPES = ['ASF_FAMILY'] as const;
+const ASF_FOUNDATION_CONSULT_FEE = 30;
+
+const isStaffType = (type?: string) => type === 'ASF';
+const isFoundationType = (type?: string) => (type ? FOUNDATION_TYPES.includes(type as any) : false);
+const isLegacyFamilyType = (type?: string) => (type ? LEGACY_FAMILY_TYPES.includes(type as any) : false);
+const formatPatientType = (type?: string) => {
+  if (!type) return 'N/A';
+  if (isFoundationType(type)) return 'ASF Foundation/School';
+  if (isLegacyFamilyType(type)) return 'ASF Staff Family';
+  if (type === 'ASF') return 'ASF Staff';
+  if (type === 'CIVILIAN') return 'Civilian';
+  return type;
+};
 
 const BillingPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +85,7 @@ const BillingPage: React.FC = () => {
 
   // New bill form
   const [billItems, setBillItems] = useState<BillItem[]>([]);
+  const [hasAutoAddedFoundationFee, setHasAutoAddedFoundationFee] = useState(false);
   const [customServiceName, setCustomServiceName] = useState('');
   const [customServicePrice, setCustomServicePrice] = useState('');
   const [customServiceDept, setCustomServiceDept] = useState('OPD');
@@ -143,6 +160,8 @@ const BillingPage: React.FC = () => {
     setPatientSearchQuery('');
     setSearchedPatients([]);
     setShowPatientDropdown(false);
+    setBillItems([]);
+    setHasAutoAddedFoundationFee(false);
     console.log('✅ Patient selected:', patient.firstName, patient.lastName);
   };
 
@@ -151,7 +170,30 @@ const BillingPage: React.FC = () => {
     setPatientSearchQuery('');
     setSearchedPatients([]);
     setBillItems([]);
+    setHasAutoAddedFoundationFee(false);
   };
+
+  useEffect(() => {
+    if (!selectedPatient) return;
+    if (!isFoundationType(selectedPatient.patientType)) return;
+    if (billItems.length > 0 || hasAutoAddedFoundationFee) return;
+
+    setBillItems([
+      {
+        id: 'foundation-consult',
+        name: 'OPD Consultation (ASF Foundation/School)',
+        department: 'OPD',
+        quantity: 1,
+        unitPrice: ASF_FOUNDATION_CONSULT_FEE,
+        total: ASF_FOUNDATION_CONSULT_FEE,
+      },
+    ]);
+    setHasAutoAddedFoundationFee(true);
+  }, [selectedPatient, billItems.length, hasAutoAddedFoundationFee]);
+
+  useEffect(() => {
+    setHasAutoAddedFoundationFee(false);
+  }, [selectedPatient?.id]);
 
   const addItemToBill = () => {
     if (!customServiceName || !customServicePrice) {
@@ -186,8 +228,8 @@ const BillingPage: React.FC = () => {
 
   const subtotal = billItems.reduce((sum, item) => sum + item.total, 0);
   
-  // ASF Staff = free, others pay
-  const isFreeService = selectedPatient?.patientType === 'ASF';
+  // ASF Staff (and legacy ASF family records) are free, others pay
+  const isFreeService = selectedPatient ? isStaffType(selectedPatient.patientType) || isLegacyFamilyType(selectedPatient.patientType) : false;
   const discount = isFreeService ? subtotal : 0;
   const tax = 0;
   const grandTotal = Math.max(subtotal - discount + tax, 0);
@@ -468,7 +510,7 @@ const BillingPage: React.FC = () => {
                           <Badge 
                             variant={inv.patientType === 'CIVILIAN' ? 'secondary' : 'default'}
                           >
-                            {inv.patientType === 'ASF_FAMILY' ? 'ASF Family' : inv.patientType || 'N/A'}
+                            {formatPatientType(inv.patientType)}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -600,7 +642,7 @@ const BillingPage: React.FC = () => {
                                     </p>
                                   </div>
                                   <Badge variant="outline" className="ml-2">
-                                    {patient.patientType === 'ASF_FAMILY' ? 'ASF Family' : patient.patientType}
+                                    {formatPatientType(patient.patientType)}
                                   </Badge>
                                 </div>
                               </button>
@@ -625,7 +667,7 @@ const BillingPage: React.FC = () => {
                             variant={selectedPatient.patientType === 'CIVILIAN' ? 'destructive' : 'default'}
                             className="ml-2"
                           >
-                            {selectedPatient.patientType === 'ASF_FAMILY' ? 'ASF Family' : selectedPatient.patientType}
+                            {formatPatientType(selectedPatient.patientType)}
                           </Badge>
                         </div>
 
@@ -642,14 +684,14 @@ const BillingPage: React.FC = () => {
                           )}
                         </div>
 
-                        {selectedPatient.patientType === 'ASF' && (
+                        {(isStaffType(selectedPatient.patientType) || isLegacyFamilyType(selectedPatient.patientType)) && (
                           <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
                             ✅ ASF Staff - Services will be provided free of charge
                           </div>
                         )}
-                        {(selectedPatient.patientType === 'ASF_FAMILY' || selectedPatient.patientType === 'ASF_SCHOOL') && (
+                        {isFoundationType(selectedPatient.patientType) && (
                           <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-                            ℹ️ {selectedPatient.patientType === 'ASF_FAMILY' ? 'ASF Family' : 'ASF School/ASFF'} - OPD Rs. 30, Lab/X-Ray at ASF rates, Medicines free
+                            ℹ️ ASF Foundation/School - OPD consultation is set to Rs. 30 (applied below); Lab/X-Ray at ASF rates; Medicines free
                           </div>
                         )}
                         {selectedPatient.patientType === 'CIVILIAN' && (

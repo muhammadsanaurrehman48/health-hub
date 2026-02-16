@@ -53,6 +53,8 @@ interface QueueData {
   patients: QueuePatient[];
 }
 
+const allowedRooms = ['1', '2', '3', '4'];
+
 const DoctorAppointments: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -63,6 +65,13 @@ const DoctorAppointments: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoDetected, setAutoDetected] = useState(false);
+
+  useEffect(() => {
+    if (!selectedRoom && user?.roomNo) {
+      setSelectedRoom(String((user as any).roomNo));
+      setAutoDetected(true);
+    }
+  }, [selectedRoom, user?.roomNo]);
 
   // Auto-detect doctor's room from queue data
   useEffect(() => {
@@ -91,6 +100,13 @@ const DoctorAppointments: React.FC = () => {
   // Fetch queue data for selected room
   useEffect(() => {
     if (!selectedRoom) return;
+
+    if (!allowedRooms.includes(selectedRoom)) {
+      setError('Please select a valid room (1-4)');
+      setQueueData(null);
+      setLoading(false);
+      return;
+    }
 
     const fetchQueueData = async () => {
       setLoading(true);
@@ -133,6 +149,10 @@ const DoctorAppointments: React.FC = () => {
 
   const handleRefresh = async () => {
     if (!selectedRoom) return;
+    if (!allowedRooms.includes(selectedRoom)) {
+      toast.error('Please select a valid room (1-4)');
+      return;
+    }
     setRefreshing(true);
     try {
       const response = await api.request(`/queue/room/${selectedRoom}`);
@@ -149,6 +169,10 @@ const DoctorAppointments: React.FC = () => {
 
   const handleMoveToNext = async () => {
     if (!selectedRoom) return;
+    if (!allowedRooms.includes(selectedRoom)) {
+      toast.error('Please select a valid room (1-4)');
+      return;
+    }
     try {
       const response = await api.request(`/queue/room/${selectedRoom}/next-patient`, {
         method: 'POST',
@@ -164,6 +188,10 @@ const DoctorAppointments: React.FC = () => {
 
   const handleCompleteAppointment = async (appointmentId: string) => {
     if (!selectedRoom) return;
+    if (!allowedRooms.includes(selectedRoom)) {
+      toast.error('Please select a valid room (1-4)');
+      return;
+    }
     try {
       const response = await api.request(`/queue/room/${selectedRoom}/complete-appointment/${appointmentId}`, {
         method: 'POST',
@@ -194,11 +222,18 @@ const DoctorAppointments: React.FC = () => {
     });
   };
 
-  const filteredPatients = queueData?.patients?.filter((patient) =>
+  const sortedPatients = (queueData?.patients || []).slice().sort((a, b) => {
+    const tokenA = parseInt(a.tokenNo, 10) || 0;
+    const tokenB = parseInt(b.tokenNo, 10) || 0;
+    if (tokenB !== tokenA) return tokenB - tokenA;
+    return (b.position || 0) - (a.position || 0);
+  });
+
+  const filteredPatients = sortedPatients.filter((patient) =>
     patient.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     patient.forceNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     patient.tokenNo?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  );
 
   const waitingCount = filteredPatients.filter(p => p.status === 'waiting').length;
   const servingCount = filteredPatients.filter(p => p.status === 'serving').length;
@@ -243,14 +278,25 @@ const DoctorAppointments: React.FC = () => {
                   <p className="text-sm text-muted-foreground mt-1">{queueData.doctorName} - {queueData.department || 'General'}</p>
                 )}
               </div>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={handleRefresh}
-                disabled={!selectedRoom || refreshing}
-              >
-                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              </Button>
+              <div className="flex items-center gap-3">
+                <div className="space-y-1 text-right">
+                  <p className="text-xs text-muted-foreground">Assigned room</p>
+                  <p className="text-sm font-semibold">
+                    {selectedRoom ? `Room ${selectedRoom}` : 'No room assigned (ask admin)'}
+                  </p>
+                  {autoDetected && !user?.roomNo && selectedRoom && (
+                    <p className="text-[11px] text-muted-foreground">Auto-detected from queue</p>
+                  )}
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={handleRefresh}
+                  disabled={!selectedRoom || refreshing}
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

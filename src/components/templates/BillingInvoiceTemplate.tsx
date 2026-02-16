@@ -20,7 +20,7 @@ interface InvoiceData {
   date: string;
   dueDate: string;
   status: 'paid' | 'pending' | 'partial';
-  patientType?: 'ASF' | 'ASF_FAMILY' | 'ASF_SCHOOL' | 'CIVILIAN';
+  patientType?: 'ASF' | 'ASF_FAMILY' | 'ASF_SCHOOL' | 'ASF_FOUNDATION' | 'CIVILIAN';
   patient: {
     name: string;
     patientNo?: string;

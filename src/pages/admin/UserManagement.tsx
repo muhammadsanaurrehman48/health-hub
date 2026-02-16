@@ -32,13 +32,15 @@ import { Plus, Search, Edit, Trash2, MoreHorizontal, Shield, UserCheck, UserX, L
 import { rolesList } from '@/types/roles';
 import { toast } from 'sonner';
 
+const roomOptions = ['1', '2', '3', '4'];
+
 const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: '', department: '', password: '' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: '', department: '', password: '', roomNo: '' });
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -70,19 +72,24 @@ const UserManagement: React.FC = () => {
       toast.error('Please fill in all required fields');
       return;
     }
+    if (newUser.role === 'doctor' && !newUser.roomNo) {
+      toast.error('Please assign a room for the doctor');
+      return;
+    }
     try {
       const response = await api.createUser({
         name: newUser.name,
         email: newUser.email,
         role: newUser.role,
         department: newUser.department,
+        roomNo: newUser.role === 'doctor' ? newUser.roomNo : undefined,
         password: newUser.password,
       });
       if (response.success) {
         toast.success(`User ${newUser.name} created successfully`);
         setUsers([...users, response.data]);
         setIsAddDialogOpen(false);
-        setNewUser({ name: '', email: '', role: '', department: '', password: '' });
+        setNewUser({ name: '', email: '', role: '', department: '', password: '', roomNo: '' });
       } else {
         toast.error(response.message || 'Failed to create user');
       }
@@ -93,7 +100,7 @@ const UserManagement: React.FC = () => {
   };
 
   const handleEditUser = (user: any) => {
-    setEditingUser({ ...user });
+    setEditingUser({ ...user, roomNo: user.roomNo || '' });
     setIsEditDialogOpen(true);
   };
 
@@ -102,12 +109,17 @@ const UserManagement: React.FC = () => {
       toast.error('Please fill in all required fields');
       return;
     }
+    if (editingUser.role === 'doctor' && !editingUser.roomNo) {
+      toast.error('Please assign a room for the doctor');
+      return;
+    }
     try {
       const response = await api.updateUser(editingUser.id, {
         name: editingUser.name,
         email: editingUser.email,
         role: editingUser.role,
         department: editingUser.department,
+        roomNo: editingUser.role === 'doctor' ? editingUser.roomNo : undefined,
       });
       if (response.success) {
         toast.success(`User ${editingUser.name} updated successfully`);
@@ -193,7 +205,10 @@ const UserManagement: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Role *</Label>
-                  <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
+                  <Select
+                    value={newUser.role}
+                    onValueChange={(value) => setNewUser({ ...newUser, role: value, roomNo: value === 'doctor' ? newUser.roomNo : '' })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
@@ -214,6 +229,21 @@ const UserManagement: React.FC = () => {
                     onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
                   />
                 </div>
+                {newUser.role === 'doctor' && (
+                  <div className="space-y-2">
+                    <Label>Consultation Room</Label>
+                    <Select value={newUser.roomNo} onValueChange={(value) => setNewUser({ ...newUser, roomNo: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Assign room" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roomOptions.map((room) => (
+                          <SelectItem key={room} value={room}>{`Room ${room}`}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Initial Password *</Label>
                   <Input
@@ -259,7 +289,10 @@ const UserManagement: React.FC = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Role *</Label>
-                    <Select value={editingUser.role} onValueChange={(value) => setEditingUser({ ...editingUser, role: value })}>
+                    <Select
+                      value={editingUser.role}
+                      onValueChange={(value) => setEditingUser({ ...editingUser, role: value, roomNo: value === 'doctor' ? editingUser.roomNo : '' })}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
@@ -280,6 +313,21 @@ const UserManagement: React.FC = () => {
                       onChange={(e) => setEditingUser({ ...editingUser, department: e.target.value })}
                     />
                   </div>
+                  {editingUser.role === 'doctor' && (
+                    <div className="space-y-2">
+                      <Label>Consultation Room</Label>
+                      <Select value={editingUser.roomNo} onValueChange={(value) => setEditingUser({ ...editingUser, roomNo: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Assign room" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {roomOptions.map((room) => (
+                            <SelectItem key={room} value={room}>{`Room ${room}`}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               )}
               <DialogFooter>
@@ -325,6 +373,7 @@ const UserManagement: React.FC = () => {
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Department</TableHead>
+                <TableHead>Room</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -341,6 +390,7 @@ const UserManagement: React.FC = () => {
                     </span>
                   </TableCell>
                   <TableCell>{user.department}</TableCell>
+                  <TableCell>{user.role === 'doctor' ? (user.roomNo || '-') : '-'}</TableCell>
                   <TableCell>
                     <span className={user.status === 'active' ? 'badge-completed' : 'badge-cancelled'}>
                       {user.status}
