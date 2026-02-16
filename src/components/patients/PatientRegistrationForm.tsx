@@ -12,6 +12,11 @@ import { Save, Shield, Phone, User, X } from 'lucide-react';
 
 const unitOptions = ['JIAP', 'NAAS', 'HQs ASF', 'ASF Academy', 'Other'];
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const genderOptions = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
+];
 
 type PatientType = 'ASF' | 'ASF_FAMILY' | 'CIVILIAN';
 
@@ -27,6 +32,7 @@ const PatientRegistrationForm: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
+  const [gender, setGender] = useState('');
   const [rank, setRank] = useState('');
   const [address, setAddress] = useState('');
 
@@ -42,6 +48,7 @@ const PatientRegistrationForm: React.FC = () => {
         !name.trim() ||
         !cnic.trim() ||
         !phone.trim() ||
+        !gender ||
         !dateOfBirth ||
         !bloodGroup ||
         (isAsf && (!forceNo.trim() || !unit.trim() || !rank.trim())) ||
@@ -53,7 +60,7 @@ const PatientRegistrationForm: React.FC = () => {
       }
 
       const [firstNamePart, ...restNames] = name.trim().split(/\s+/);
-      const derivedLastName = restNames.join(' ');
+      const derivedLastName = restNames.join(' ') || firstNamePart;
 
       const patientData = {
         patientType,
@@ -68,6 +75,7 @@ const PatientRegistrationForm: React.FC = () => {
         contactNo: phone.trim(),
         dateOfBirth,
         bloodGroup,
+        gender,
         address: isCivilian ? address.trim() : undefined,
       };
 
@@ -216,6 +224,22 @@ const PatientRegistrationForm: React.FC = () => {
                 onChange={(e) => setDateOfBirth(e.target.value)}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="gender">Gender *</Label>
+              <Select value={gender} onValueChange={setGender} required>
+                <SelectTrigger id="gender">
+                  <SelectValue placeholder="Select Gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  {genderOptions.map((g) => (
+                    <SelectItem key={g.value} value={g.value}>
+                      {g.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
