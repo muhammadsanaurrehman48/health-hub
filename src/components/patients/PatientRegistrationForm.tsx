@@ -17,6 +17,13 @@ const genderOptions = [
   { value: 'female', label: 'Female' },
   { value: 'other', label: 'Other' },
 ];
+const relationOptions = [
+  { value: 'spouse', label: 'Spouse' },
+  { value: 'child', label: 'Child' },
+  { value: 'parent', label: 'Parent' },
+  { value: 'sibling', label: 'Sibling' },
+  { value: 'other', label: 'Other' },
+];
 
 type PatientType = 'ASF' | 'ASF_FAMILY' | 'CIVILIAN';
 
@@ -35,6 +42,34 @@ const PatientRegistrationForm: React.FC = () => {
   const [gender, setGender] = useState('');
   const [rank, setRank] = useState('');
   const [address, setAddress] = useState('');
+  const emptyFamilyMember = { name: '', gender: '', dateOfBirth: '', bloodGroup: '', relationToHead: '', phone: '', cnic: '' };
+  const [familyMembers, setFamilyMembers] = useState([emptyFamilyMember]);
+
+  const formatCnic = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 13);
+    const part1 = digits.slice(0, 5);
+    const part2 = digits.slice(5, 12);
+    const part3 = digits.slice(12, 13);
+    if (digits.length > 12) return `${part1}-${part2}-${part3}`;
+    if (digits.length > 5) return `${part1}-${part2}`;
+    return part1;
+  };
+
+  const updateFamilyMember = (index: number, field: string, value: string) => {
+    setFamilyMembers((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const addFamilyMember = () => {
+    setFamilyMembers((prev) => [...prev, emptyFamilyMember]);
+  };
+
+  const removeFamilyMember = (index: number) => {
+    setFamilyMembers((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +94,19 @@ const PatientRegistrationForm: React.FC = () => {
         return;
       }
 
+      const filteredFamilyMembers = familyMembers.filter((fm) => {
+        return fm.name || fm.gender || fm.dateOfBirth || fm.bloodGroup || fm.relationToHead || fm.phone || fm.cnic;
+      });
+
+      if (patientType === 'ASF') {
+        const incomplete = filteredFamilyMembers.some((fm) => !fm.name.trim() || !fm.gender || !fm.dateOfBirth || !fm.bloodGroup || !fm.relationToHead);
+        if (incomplete) {
+          toast.error('Please complete all required fields for each family member (name, relation, gender, DOB, blood group)');
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const [firstNamePart, ...restNames] = name.trim().split(/\s+/);
       const derivedLastName = restNames.join(' ') || firstNamePart;
 
@@ -77,6 +125,13 @@ const PatientRegistrationForm: React.FC = () => {
         bloodGroup,
         gender,
         address: isCivilian ? address.trim() : undefined,
+        familyMembers:
+          patientType === 'ASF'
+            ? filteredFamilyMembers.map((fm) => ({
+                ...fm,
+                name: fm.name.trim(),
+              }))
+            : undefined,
       };
 
       const response = await api.createPatient(patientData);
@@ -100,6 +155,7 @@ const PatientRegistrationForm: React.FC = () => {
 
   const isAsf = patientType === 'ASF' || patientType === 'ASF_FAMILY';
   const isCivilian = patientType === 'CIVILIAN';
+  const isAsfStaff = patientType === 'ASF';
 
   return (
     <div className="space-y-6">
@@ -210,7 +266,7 @@ const PatientRegistrationForm: React.FC = () => {
                 id="cnic"
                 placeholder="XXXXX-XXXXXXX-X"
                 value={cnic}
-                onChange={(e) => setCnic(e.target.value)}
+                onChange={(e) => setCnic(formatCnic(e.target.value))}
                 required
               />
             </div>
@@ -292,6 +348,119 @@ const PatientRegistrationForm: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+
+        {isAsfStaff && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5 text-primary" />
+                Family Members ( Will have the same Force Number )
+              </CardTitle>
+              <CardDescription>Add spouse/children so they can be reused on future visits.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {familyMembers.map((fm, idx) => (
+                <div key={idx} className="border rounded-md p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm font-semibold text-muted-foreground">Family Member {idx + 1}</p>
+                    <Button variant="ghost" type="button" size="sm" onClick={() => removeFamilyMember(idx)} disabled={familyMembers.length === 1}>
+                      Remove
+                    </Button>
+                  </div>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2 lg:col-span-3">
+                      <Label htmlFor={`fm-name-${idx}`}>Name</Label>
+                      <Input
+                        id={`fm-name-${idx}`}
+                        placeholder="Full name"
+                        value={fm.name}
+                        onChange={(e) => updateFamilyMember(idx, 'name', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`fm-relation-${idx}`}>Relation</Label>
+                      <Select
+                        value={fm.relationToHead}
+                        onValueChange={(val) => updateFamilyMember(idx, 'relationToHead', val)}
+                      >
+                        <SelectTrigger id={`fm-relation-${idx}`}>
+                          <SelectValue placeholder="Select relation" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {relationOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`fm-gender-${idx}`}>Gender</Label>
+                      <Select value={fm.gender} onValueChange={(val) => updateFamilyMember(idx, 'gender', val)}>
+                        <SelectTrigger id={`fm-gender-${idx}`}>
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {genderOptions.map((g) => (
+                            <SelectItem key={g.value} value={g.value}>
+                              {g.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`fm-dob-${idx}`}>Date of Birth</Label>
+                      <Input
+                        id={`fm-dob-${idx}`}
+                        type="date"
+                        value={fm.dateOfBirth}
+                        onChange={(e) => updateFamilyMember(idx, 'dateOfBirth', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`fm-blood-${idx}`}>Blood Group</Label>
+                      <Select value={fm.bloodGroup} onValueChange={(val) => updateFamilyMember(idx, 'bloodGroup', val)}>
+                        <SelectTrigger id={`fm-blood-${idx}`}>
+                          <SelectValue placeholder="Select blood group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bloodGroups.map((bg) => (
+                            <SelectItem key={bg} value={bg}>
+                              {bg}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`fm-phone-${idx}`}>Phone (optional)</Label>
+                      <Input
+                        id={`fm-phone-${idx}`}
+                        placeholder="03XX-XXXXXXX"
+                        value={fm.phone}
+                        onChange={(e) => updateFamilyMember(idx, 'phone', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`fm-cnic-${idx}`}>CNIC (optional)</Label>
+                      <Input
+                        id={`fm-cnic-${idx}`}
+                        placeholder="XXXXX-XXXXXXX-X"
+                        value={fm.cnic}
+                        onChange={(e) => updateFamilyMember(idx, 'cnic', formatCnic(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <Button type="button" variant="outline" onClick={addFamilyMember}>
+                Add Family Member
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={() => navigate(-1)}>

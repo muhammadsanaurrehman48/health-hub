@@ -51,6 +51,8 @@ const AppointmentsPage: React.FC = () => {
 
   // New appointment form
   const [newPatientName, setNewPatientName] = useState('');
+  const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
   const [newDoctor, setNewDoctor] = useState('');
   const [newRoomNo, setNewRoomNo] = useState('');
 
@@ -102,6 +104,7 @@ const AppointmentsPage: React.FC = () => {
             id: p._id || p.id,
             name: p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name || 'Unknown',
             mrNo: p.mrNo || p.patientNo || '',
+            forceNo: p.forceNo || '',
           }));
           setPatients(patientList);
           console.log('✅ Patients loaded:', patientList.length, 'patients');
@@ -188,7 +191,7 @@ const AppointmentsPage: React.FC = () => {
   };
 
   const handleCreateAppointment = async () => {
-    if (!newPatientName) {
+    if (!selectedPatientId) {
       toast.error('Patient is required');
       return;
     }
@@ -203,7 +206,7 @@ const AppointmentsPage: React.FC = () => {
     
     try {
       // Find patient and doctor from lists
-      const selectedPatient = patients.find(p => p.name === newPatientName);
+      const selectedPatient = patients.find(p => p.id === selectedPatientId) || patients.find(p => p.name === newPatientName);
       const selectedDoctor = doctors.find(d => d.name === newDoctor);
       
       if (!selectedPatient || !selectedDoctor) {
@@ -245,6 +248,8 @@ const AppointmentsPage: React.FC = () => {
         // Clear form
         setIsDialogOpen(false);
         setNewPatientName('');
+        setSelectedPatientId('');
+        setPatientSearch('');
         setNewDoctor('');
         setNewRoomNo('');
         
@@ -331,6 +336,18 @@ const AppointmentsPage: React.FC = () => {
       mrNo.toLowerCase().includes(searchLower)
     );
   });
+
+  const patientOptions = patients
+    .filter((p) => {
+      if (!patientSearch.trim()) return false;
+      const q = patientSearch.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.mrNo || '').toLowerCase().includes(q) ||
+        (p.forceNo || '').toLowerCase().includes(q)
+      );
+    })
+    .slice(0, 25);
   
   console.log('🔍 Filter Debug:', {
     totalAppointments: appointments.length,
@@ -372,20 +389,50 @@ const AppointmentsPage: React.FC = () => {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Patient <span className="text-destructive">*</span></Label>
-                  <Select value={newPatientName} onValueChange={setNewPatientName} disabled={patients.length === 0}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={patients.length === 0 ? "No patients registered" : "Select patient"} />
-                    </SelectTrigger>
-                    {patients.length > 0 && (
-                      <SelectContent>
-                        {patients.map((patient: any) => (
-                          <SelectItem key={patient.id} value={patient.name}>
-                            {patient.name} ({patient.mrNo || '-'})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder={patients.length === 0 ? 'No patients registered' : 'Search by name, MR No, or Force No'}
+                        className="pl-10"
+                        value={patientSearch}
+                        onChange={(e) => {
+                          setPatientSearch(e.target.value);
+                          setSelectedPatientId('');
+                          setNewPatientName('');
+                        }}
+                        disabled={patients.length === 0}
+                      />
+                    </div>
+                    {patients.length > 0 && patientSearch.trim().length > 0 && (
+                      <div className="max-h-64 overflow-y-auto border rounded-md divide-y">
+                        {patientOptions.length === 0 ? (
+                          <p className="p-3 text-sm text-muted-foreground">No matches</p>
+                        ) : (
+                          patientOptions.map((patient) => (
+                            <button
+                              key={patient.id}
+                              type="button"
+                              className={`w-full text-left px-3 py-2 hover:bg-muted ${selectedPatientId === patient.id ? 'bg-muted' : ''}`}
+                              onClick={() => {
+                                setSelectedPatientId(patient.id);
+                                setNewPatientName(patient.name);
+                                setPatientSearch(`${patient.name} (${patient.mrNo || 'N/A'}${patient.forceNo ? ` | Force ${patient.forceNo}` : ''})`);
+                              }}
+                            >
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <p className="font-medium text-sm">{patient.name}</p>
+                                  <p className="text-xs text-muted-foreground">MR: {patient.mrNo || 'N/A'}{patient.forceNo ? ` • Force: ${patient.forceNo}` : ''}</p>
+                                </div>
+                                {selectedPatientId === patient.id && <Badge variant="secondary">Selected</Badge>}
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
                     )}
-                  </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Doctor <span className="text-destructive">*</span></Label>
