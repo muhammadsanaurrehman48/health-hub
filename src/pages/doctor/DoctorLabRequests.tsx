@@ -196,14 +196,22 @@ const DoctorLabRequests: React.FC = () => {
     }
     try {
       const patient = patients.find(p => p.mrNo === selectedPatient);
+      const invoiceInfos: string[] = [];
       for (const test of selectedTests) {
-        await api.createLabRequest({
+        const res = await api.createLabRequest({
           patientId: patient?.id,
           mrNo: selectedPatient,
           test: test,
         });
+        if (res?.data?.invoice) {
+          invoiceInfos.push(`${test}: ${res.data.invoice.invoiceNo} (Rs. ${res.data.invoice.amount})`);
+        }
       }
-      toast.success(`${selectedTests.length} lab test(s) requested successfully!`);
+      toast.success(`${selectedTests.length} lab test(s) requested successfully!`, {
+        description: invoiceInfos.length > 0
+          ? `Invoice(s) auto-generated: ${invoiceInfos.join(', ')}. Receptionist notified for payment.`
+          : 'Receptionist notified.',
+      });
       setIsRequestDialogOpen(false);
       setSelectedPatient('');
       setSelectedTests([]);

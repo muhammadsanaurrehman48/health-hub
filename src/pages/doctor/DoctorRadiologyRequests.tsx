@@ -122,14 +122,22 @@ const DoctorRadiologyRequests: React.FC = () => {
     }
     try {
       const patient = patients.find((p: any) => p.mrNo === selectedPatient || p.id === selectedPatient);
+      const invoiceInfos: string[] = [];
       for (const test of selectedTests) {
-        await api.createRadiologyRequest({
+        const res = await api.createRadiologyRequest({
           patientId: patient?.id,
           mrNo: selectedPatient,
           testType: test,
         });
+        if (res?.data?.invoice) {
+          invoiceInfos.push(`${test}: ${res.data.invoice.invoiceNo} (Rs. ${res.data.invoice.amount})`);
+        }
       }
-      toast.success(`${selectedTests.length} radiology test(s) requested successfully!`);
+      toast.success(`${selectedTests.length} radiology test(s) requested successfully!`, {
+        description: invoiceInfos.length > 0
+          ? `Invoice(s) auto-generated: ${invoiceInfos.join(', ')}. Receptionist notified for payment.`
+          : 'Receptionist notified.',
+      });
       setIsRequestDialogOpen(false);
       setSelectedPatient('');
       setSelectedTests([]);
