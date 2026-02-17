@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import api from '@/utils/api';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 import {
   Users,
   Building2,
@@ -16,6 +18,8 @@ import {
   Loader2,
   DollarSign,
   TrendingUp,
+  RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
@@ -38,35 +42,68 @@ const AdminDashboard: React.FC = () => {
   });
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [resetting, setResetting] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const statsRes = await api.getAdminStats().catch(err => {
+  const fetchData = useCallback(async (showLoader = false) => {
+    if (showLoader) setLoading(true);
+    try {
+      const [statsRes, activitiesRes] = await Promise.all([
+        api.getAdminStats().catch(err => {
           console.error('Stats API error:', err);
           return { success: false, data: null };
-        });
-        
-        const activitiesRes = await api.getActivities().catch(err => {
+        }),
+        api.getActivities().catch(err => {
           console.error('Activities API error:', err);
           return { success: false, data: [] };
-        });
+        }),
+      ]);
         
-        if (statsRes?.success && statsRes?.data) {
-          setStats(statsRes.data);
-        }
-        
-        if (activitiesRes?.success && activitiesRes?.data) {
-          setActivities(activitiesRes.data);
-        }
-      } catch (error) {
-        console.error('Error fetching admin data:', error);
-      } finally {
-        setLoading(false);
+      if (statsRes?.success && statsRes?.data) {
+        setStats(statsRes.data);
       }
-    };
-    fetchData();
+        
+      if (activitiesRes?.success && activitiesRes?.data) {
+        setActivities(activitiesRes.data);
+      }
+      setLastRefresh(new Date());
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData(true);
+  }, [fetchData]);
+
+  // Auto-refresh every 30 seconds to keep data up-to-date
+  useEffect(() => {
+    const interval = setInterval(() => fetchData(false), 30000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const handleDailyReset = async () => {
+    if (!window.confirm('This will archive all active appointments and clear queues for the new day. Appointments will NOT be deleted from the database. Continue?')) {
+      return;
+    }
+    setResetting(true);
+    try {
+      const res = await api.dailyResetAppointments();
+      if (res?.success) {
+        toast.success(`Daily reset complete: ${res.archivedAppointments || 0} appointments archived, ${res.clearedQueues || 0} queues cleared, ${res.doctorSlotsReset || 0} doctor slots restored.`);
+        fetchData(false);
+      } else {
+        toast.error('Reset failed');
+      }
+    } catch (error) {
+      console.error('Error in daily reset:', error);
+      toast.error('Failed to reset appointments');
+    } finally {
+      setResetting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -81,6 +118,32 @@ const AdminDashboard: React.FC = () => {
   return (
     <DashboardLayout requiredRole="admin">
       <div className="space-y-6">
+        {/* Header with refresh controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Admin Dashboard</h2>
+            <p className="text-xs text-muted-foreground">
+              Last updated: {lastRefresh.toLocaleTimeString()} &middot; Auto-refreshes every 30s
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => fetchData(false)} className="gap-1">
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh
+            </Button>
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={handleDailyReset} 
+              disabled={resetting}
+              className="gap-1"
+            >
+              {resetting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+              Daily Reset
+            </Button>
+          </div>
+        </div>
+
         {/* Stats Grid */}
         <div className="dashboard-grid">
           <StatCard

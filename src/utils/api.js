@@ -441,8 +441,15 @@ class ApiClient {
     return this.request('/admin/health');
   }
 
-  async getBillingOverview() {
-    return this.request('/admin/billing-overview');
+  async getBillingOverview(period) {
+    const params = period ? `?period=${period}` : '';
+    return this.request(`/admin/billing-overview${params}`);
+  }
+
+  async dailyResetAppointments() {
+    return this.request('/appointments/admin/daily-reset', {
+      method: 'POST',
+    });
   }
 
   async getReports(period = '6months') {
