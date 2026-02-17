@@ -58,6 +58,15 @@ const ASF_FOUNDATION_CONSULT_FEE = 30;
 // All ASF-affiliated types that get free services (medicines, lab, radiology)
 const ALL_FREE_TYPES = ['ASF', 'ASF_FAMILY', 'ASF_FOUNDATION', 'ASF_SCHOOL'] as const;
 
+// OPD charges per patient type (must match backend pricing.js)
+const OPD_CHARGES: Record<string, number> = {
+  ASF: 0,
+  ASF_FAMILY: 0,
+  ASF_SCHOOL: 30,
+  ASF_FOUNDATION: 30,
+  CIVILIAN: 100,
+};
+
 const isStaffType = (type?: string) => type === 'ASF';
 const isFoundationType = (type?: string) => (type ? FOUNDATION_TYPES.includes(type as any) : false);
 const isLegacyFamilyType = (type?: string) => (type ? LEGACY_FAMILY_TYPES.includes(type as any) : false);
@@ -139,6 +148,16 @@ const BillingPage: React.FC = () => {
   const [quantity, setQuantity] = useState('1');
   const [manualDiscount, setManualDiscount] = useState('');
   const [creatingBill, setCreatingBill] = useState(false);
+
+  // Service catalog (loaded from backend based on patient type)
+  const [serviceCatalog, setServiceCatalog] = useState<any>(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [selectedCatalogService, setSelectedCatalogService] = useState('');
+
+  // Immediate payment during bill creation
+  const [collectPaymentNow, setCollectPaymentNow] = useState(false);
+  const [createPaymentMethod, setCreatePaymentMethod] = useState('cash');
+  const [createPaymentRef, setCreatePaymentRef] = useState('');
 
   // Payment processing
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<any>(null);
@@ -222,6 +241,23 @@ const BillingPage: React.FC = () => {
     setBillItems([]);
     setHasAutoAddedFoundationFee(false);
     console.log('✅ Patient selected:', patient.firstName, patient.lastName);
+    // Load service catalog for patient's type
+    loadServiceCatalog(patient.patientType);
+  };
+
+  const loadServiceCatalog = async (patientType: string) => {
+    setCatalogLoading(true);
+    try {
+      const response = await api.getServicePricing(patientType);
+      if (response.success) {
+        setServiceCatalog(response.data);
+        console.log('📋 Service catalog loaded for', patientType);
+      }
+    } catch (err) {
+      console.error('Error loading service catalog:', err);
+    } finally {
+      setCatalogLoading(false);
+    }
   };
 
   const clearSelectedPatient = () => {
@@ -231,23 +267,36 @@ const BillingPage: React.FC = () => {
     setBillItems([]);
     setHasAutoAddedFoundationFee(false);
     setManualDiscount('');
+    setServiceCatalog(null);
+    setSelectedCatalogService('');
+    setCollectPaymentNow(false);
+    setCreatePaymentMethod('cash');
+    setCreatePaymentRef('');
   };
 
   useEffect(() => {
     if (!selectedPatient) return;
-    if (!isFoundationType(selectedPatient.patientType)) return;
     if (billItems.length > 0 || hasAutoAddedFoundationFee) return;
 
-    setBillItems([
-      {
-        id: 'foundation-consult',
-        name: 'OPD Consultation (ASF Foundation/School)',
-        department: 'OPD',
-        quantity: 1,
-        unitPrice: ASF_FOUNDATION_CONSULT_FEE,
-        total: ASF_FOUNDATION_CONSULT_FEE,
-      },
-    ]);
+    const opdCharge = OPD_CHARGES[selectedPatient.patientType] ?? 100;
+    // Auto-add OPD consultation for all patient types (price varies)
+    if (opdCharge > 0) {
+      const label = isFoundationType(selectedPatient.patientType)
+        ? 'OPD Consultation (ASF Foundation/School)'
+        : selectedPatient.patientType === 'CIVILIAN'
+          ? 'OPD Consultation (Civilian)'
+          : 'OPD Consultation';
+      setBillItems([
+        {
+          id: 'opd-consult',
+          name: label,
+          department: 'OPD',
+          quantity: 1,
+          unitPrice: opdCharge,
+          total: opdCharge,
+        },
+      ]);
+    }
     setHasAutoAddedFoundationFee(true);
   }, [selectedPatient, billItems.length, hasAutoAddedFoundationFee]);
 
@@ -261,7 +310,7 @@ const BillingPage: React.FC = () => {
       return;
     }
     const price = parseFloat(customServicePrice);
-    if (isNaN(price) || price <= 0) {
+    if (isNaN(price) || price < 0) {
       toast.error('Please enter a valid price');
       return;
     }
@@ -280,6 +329,50 @@ const BillingPage: React.FC = () => {
     setCustomServiceName('');
     setCustomServicePrice('');
     setQuantity('1');
+  };
+
+  // Add a service from the catalog dropdown (auto-priced)
+  const addCatalogService = () => {
+    if (!selectedCatalogService || !serviceCatalog) return;
+
+    // Find the service from catalog
+    const allServices = [
+      ...(serviceCatalog.services?.opd || []),
+      ...(serviceCatalog.services?.laboratory || []),
+      ...(serviceCatalog.services?.radiology || []),
+      ...(serviceCatalog.services?.pharmacy || []),
+    ];
+    const svc = allServices.find((s: any) => `${s.department}::${s.name}` === selectedCatalogService);
+    if (!svc) return;
+
+    // Check if already added
+    const alreadyAdded = billItems.find(item => item.name === svc.name && item.department === svc.department);
+    if (alreadyAdded) {
+      toast.error(`"${svc.name}" is already in the bill`);
+      return;
+    }
+
+    const price = svc.isFree ? 0 : (svc.price || 0);
+    setBillItems([
+      ...billItems,
+      {
+        id: Date.now().toString(),
+        name: svc.name,
+        department: svc.department,
+        quantity: 1,
+        unitPrice: price,
+        total: price,
+      },
+    ]);
+    setSelectedCatalogService('');
+    toast.success(`Added "${svc.name}" — Rs. ${price}`);
+  };
+
+  // Get catalog services for the selected department
+  const getCatalogServicesForDept = (dept: string): any[] => {
+    if (!serviceCatalog?.services) return [];
+    const key = dept.toLowerCase() === 'lab' ? 'laboratory' : dept.toLowerCase();
+    return serviceCatalog.services[key] || [];
   };
 
   const removeItemFromBill = (id: string) => {
@@ -311,23 +404,40 @@ const BillingPage: React.FC = () => {
     try {
       console.log('📝 Creating invoice for:', selectedPatient.firstName, selectedPatient.lastName);
       
-      const invoiceData = {
+      const invoiceData: any = {
         patientId: selectedPatient.id,
         patientName: `${selectedPatient.firstName} ${selectedPatient.lastName}`,
         items: billItems.map(item => ({
           service: item.name,
+          name: item.name,
           price: item.unitPrice,
           quantity: item.quantity,
+          department: item.department,
         })),
         discount: discount,
+        source: 'Manual',
       };
+
+      // Include immediate payment info if receptionist is collecting now
+      if (collectPaymentNow && !isFreeService && grandTotal > 0) {
+        invoiceData.paymentMethod = createPaymentMethod;
+        invoiceData.amountPaid = grandTotal;
+        invoiceData.transactionId = createPaymentRef || undefined;
+      }
 
       const response = await api.createInvoice(invoiceData);
       
       if (response.success) {
         console.log('✅ Invoice created:', response.data.invoiceNo);
+
+        const statusLabel = isFreeService
+          ? 'Free (ASF) — No payment required'
+          : collectPaymentNow
+            ? `Paid via ${createPaymentMethod}`
+            : 'Payment pending';
+
         toast.success(response.message, {
-          description: `Invoice: ${response.data.invoiceNo} | Total: Rs. ${grandTotal.toLocaleString()}`,
+          description: `Invoice: ${response.data.invoiceNo} | Total: Rs. ${grandTotal.toLocaleString()} | ${statusLabel}`,
         });
 
         // Refresh invoices
@@ -747,6 +857,101 @@ const BillingPage: React.FC = () => {
                     <CardTitle>Add Services</CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {/* ── Catalog-based service selector (auto-priced) ── */}
+                    {selectedPatient && serviceCatalog && (
+                      <div className="mb-6 p-4 bg-muted/30 rounded-lg border">
+                        <Label className="text-sm font-semibold mb-2 block">
+                          Quick Add — Services with Auto Pricing ({formatPatientType(selectedPatient.patientType)})
+                        </Label>
+                        <div className="flex gap-3 items-end">
+                          <div className="flex-1">
+                            <Select value={selectedCatalogService} onValueChange={setSelectedCatalogService}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a service..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {/* OPD */}
+                                {getCatalogServicesForDept('opd').length > 0 && (
+                                  <>
+                                    <SelectItem value="__opd_header" disabled className="font-bold text-primary">
+                                      ── OPD ──
+                                    </SelectItem>
+                                    {getCatalogServicesForDept('opd').map((s: any) => (
+                                      <SelectItem key={`OPD::${s.name}`} value={`OPD::${s.name}`}>
+                                        {s.name} — Rs. {s.price} {s.isFree ? '(Free)' : ''}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                                {/* Laboratory */}
+                                {getCatalogServicesForDept('laboratory').length > 0 && (
+                                  <>
+                                    <SelectItem value="__lab_header" disabled className="font-bold text-primary">
+                                      ── Laboratory ──
+                                    </SelectItem>
+                                    {getCatalogServicesForDept('laboratory').map((s: any) => (
+                                      <SelectItem key={`Laboratory::${s.name}`} value={`Laboratory::${s.name}`}>
+                                        {s.name} — Rs. {s.price} {s.isFree ? '(Free)' : ''}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                                {/* Radiology */}
+                                {getCatalogServicesForDept('radiology').length > 0 && (
+                                  <>
+                                    <SelectItem value="__rad_header" disabled className="font-bold text-primary">
+                                      ── Radiology ──
+                                    </SelectItem>
+                                    {getCatalogServicesForDept('radiology').map((s: any) => (
+                                      <SelectItem key={`Radiology::${s.name}`} value={`Radiology::${s.name}`}>
+                                        {s.name} — Rs. {s.price} {s.isFree ? '(Free)' : ''}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                                {/* Pharmacy */}
+                                {getCatalogServicesForDept('pharmacy').length > 0 && (
+                                  <>
+                                    <SelectItem value="__pharm_header" disabled className="font-bold text-primary">
+                                      ── Pharmacy ──
+                                    </SelectItem>
+                                    {getCatalogServicesForDept('pharmacy').map((s: any) => (
+                                      <SelectItem key={`Pharmacy::${s.name}`} value={`Pharmacy::${s.name}`}>
+                                        {s.name} — Rs. {s.isFree ? 0 : s.price}{s.isFree ? ' (Free)' : ''}{s.stock != null ? ` [Stock: ${s.stock}]` : ''}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button onClick={addCatalogService} disabled={!selectedCatalogService || selectedCatalogService.startsWith('__')}>
+                            <Plus className="w-4 h-4 mr-1" /> Add
+                          </Button>
+                        </div>
+                        {serviceCatalog.isFreePatient && (
+                          <p className="text-xs text-green-700 mt-2">
+                            All services are free for {formatPatientType(selectedPatient.patientType)} patients. Full discount will be applied automatically.
+                          </p>
+                        )}
+                        {!serviceCatalog.isFreePatient && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Prices shown are for {formatPatientType(selectedPatient.patientType)} patients. OPD: Rs. {serviceCatalog.opdCharge}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {catalogLoading && (
+                      <div className="mb-4 text-center text-muted-foreground">
+                        <Loader2 className="w-4 h-4 inline animate-spin mr-2" />
+                        Loading service catalog...
+                      </div>
+                    )}
+
+                    {/* ── Manual custom service entry ── */}
+                    <div className="mb-2">
+                      <Label className="text-sm font-semibold text-muted-foreground">Or Add Custom Service</Label>
+                    </div>
                     <div className="flex gap-4 mb-4">
                       <div className="flex-1">
                         <Label>Service Name</Label>
@@ -848,10 +1053,19 @@ const BillingPage: React.FC = () => {
                     <CardTitle>Bill Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {isFreeService && (
-                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
-                        <p className="font-semibold mb-1">✅ Free Services</p>
-                        <p>Full amount will be waived for ASF Staff</p>
+                    {/* ── Conditions Summary ── */}
+                    {selectedPatient && (
+                      <div className={`p-3 rounded-lg text-sm border ${isFreeService ? 'bg-green-50 border-green-200 text-green-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                        <p className="font-semibold mb-1">
+                          {isFreeService ? '✅ ASF Patient — Free Services' : '💳 Civilian — Standard Charges'}
+                        </p>
+                        <ul className="text-xs space-y-0.5 list-disc list-inside">
+                          <li>OPD: Rs. {OPD_CHARGES[selectedPatient.patientType] ?? 100}</li>
+                          <li>Lab Tests: {isFreeService ? 'Free (100% discount)' : 'Civilian rates apply'}</li>
+                          <li>Radiology: {isFreeService ? 'Free (100% discount)' : 'Civilian rates apply'}</li>
+                          <li>Medicines: {isFreeService ? 'Free' : 'Charged at inventory price'}</li>
+                          {isFreeService && <li className="font-semibold">Auto-marked as Paid</li>}
+                        </ul>
                       </div>
                     )}
 
@@ -878,7 +1092,9 @@ const BillingPage: React.FC = () => {
 
                     {discount > 0 && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-muted-foreground">Discount (ASF):</span>
+                        <span className="text-muted-foreground">
+                          {isFreeService ? 'ASF Discount (100%):' : 'Discount:'}
+                        </span>
                         <span className="font-medium text-success">- Rs. {discount.toLocaleString()}</span>
                       </div>
                     )}
@@ -892,6 +1108,50 @@ const BillingPage: React.FC = () => {
                         Rs. {grandTotal.toLocaleString()}
                       </span>
                     </div>
+
+                    {/* ── Immediate Payment Option (for non-free patients) ── */}
+                    {!isFreeService && selectedPatient && grandTotal > 0 && (
+                      <div className="border rounded-lg p-3 space-y-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={collectPaymentNow}
+                            onChange={(e) => setCollectPaymentNow(e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          <span className="text-sm font-medium">Collect payment now</span>
+                        </label>
+                        {collectPaymentNow && (
+                          <div className="space-y-2">
+                            <Select value={createPaymentMethod} onValueChange={setCreatePaymentMethod}>
+                              <SelectTrigger className="h-8 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="cash">Cash</SelectItem>
+                                <SelectItem value="card">Card</SelectItem>
+                                <SelectItem value="check">Check</SelectItem>
+                                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {createPaymentMethod !== 'cash' && (
+                              <Input
+                                className="h-8 text-sm"
+                                placeholder={createPaymentMethod === 'check' ? 'Check number' : 'Transaction ID'}
+                                value={createPaymentRef}
+                                onChange={(e) => setCreatePaymentRef(e.target.value)}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {isFreeService && grandTotal === 0 && billItems.length > 0 && (
+                      <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700 text-center">
+                        Invoice will be auto-marked as <strong>Paid</strong>
+                      </div>
+                    )}
 
                     <Button
                       className="w-full"
@@ -907,7 +1167,7 @@ const BillingPage: React.FC = () => {
                       ) : (
                         <>
                           <Receipt className="w-4 h-4 mr-2" />
-                          Generate Invoice
+                          {isFreeService ? 'Generate Free Invoice' : collectPaymentNow ? 'Generate & Collect Payment' : 'Generate Invoice'}
                         </>
                       )}
                     </Button>

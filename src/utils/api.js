@@ -364,6 +364,10 @@ class ApiClient {
     });
   }
 
+  async getServicePricing(patientType) {
+    return this.request(`/billing/pricing/${patientType}`);
+  }
+
   // Inventory endpoints
   async getInventory() {
     return this.request('/inventory');
