@@ -55,6 +55,8 @@ interface Patient {
 const FOUNDATION_TYPES = ['ASF_FOUNDATION', 'ASF_SCHOOL'] as const;
 const LEGACY_FAMILY_TYPES = ['ASF_FAMILY'] as const;
 const ASF_FOUNDATION_CONSULT_FEE = 30;
+// All ASF-affiliated types that get free services (medicines, lab, radiology)
+const ALL_FREE_TYPES = ['ASF', 'ASF_FAMILY', 'ASF_FOUNDATION', 'ASF_SCHOOL'] as const;
 
 const isStaffType = (type?: string) => type === 'ASF';
 const isFoundationType = (type?: string) => (type ? FOUNDATION_TYPES.includes(type as any) : false);
@@ -66,6 +68,51 @@ const formatPatientType = (type?: string) => {
   if (type === 'ASF') return 'ASF Staff';
   if (type === 'CIVILIAN') return 'Civilian';
   return type;
+};
+
+const resolveInvoiceAmounts = (inv: any) => {
+  // subtotal = pre-discount sum of items
+  const subtotal = Number(inv?.total ?? 0);
+  const rawDiscount = Number(inv?.discount ?? 0);
+  // netAmount = what patient actually owes (after discount)
+  // Use stored netAmount if available (could be 0 for free patients), otherwise compute
+  const netAmount = (inv?.netAmount != null) ? Number(inv.netAmount) : Math.max(subtotal - rawDiscount, 0);
+  // Infer discount if backend set discount=0 but netAmount < total (legacy data)
+  const discount = rawDiscount > 0 ? rawDiscount : Math.max(subtotal - netAmount, 0);
+  const paid = Number(inv?.amountPaid ?? 0);
+  const balance = Math.max(netAmount - paid, 0);
+  return { subtotal, discount, netAmount, paid, balance };
+};
+
+const mapInvoiceToTemplate = (inv: any) => {
+  const { subtotal, discount, netAmount, paid, balance } = resolveInvoiceAmounts(inv);
+  const createdAt = inv?.createdAt ? new Date(inv.createdAt) : new Date();
+  const dueDate = inv?.dueDate ? new Date(inv.dueDate) : new Date(createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  return {
+    invoiceNo: inv?.invoiceNo || 'INV-UNKNOWN',
+    date: createdAt.toISOString().split('T')[0],
+    dueDate: dueDate.toISOString().split('T')[0],
+    status: (inv?.paymentStatus || 'pending') as 'paid' | 'pending' | 'partial',
+    patientType: inv?.patientType,
+    patient: {
+      name: inv?.patientName || inv?.patient?.name || 'N/A',
+      mrNo: inv?.patientNo || inv?.patient?.mrNo || '',
+      forceNo: inv?.forceNo || inv?.patient?.forceNo || '',
+      phone: inv?.patient?.phone || '',
+      address: inv?.patient?.address || '',
+    },
+    items: inv?.items || [],
+    subtotal,
+    discount,
+    tax: 0,
+    grandTotal: netAmount,
+    amountPaid: paid,
+    balance,
+    paymentMethod: inv?.paymentMethod || '',
+    paymentRef: inv?.transactionId || inv?.paymentReference || '',
+    createdBy: 'Receptionist',
+  } as const;
 };
 
 const BillingPage: React.FC = () => {
@@ -90,6 +137,7 @@ const BillingPage: React.FC = () => {
   const [customServicePrice, setCustomServicePrice] = useState('');
   const [customServiceDept, setCustomServiceDept] = useState('OPD');
   const [quantity, setQuantity] = useState('1');
+  const [manualDiscount, setManualDiscount] = useState('');
   const [creatingBill, setCreatingBill] = useState(false);
 
   // Payment processing
@@ -113,8 +161,19 @@ const BillingPage: React.FC = () => {
     try {
       const response = await api.getInvoices();
       if (response.success) {
-        setInvoices(response.data);
-        console.log('📥 Fetched invoices:', response.data.length);
+        const normalized = (response.data || []).map((inv: any) => {
+          const { subtotal, discount, netAmount, paid, balance } = resolveInvoiceAmounts(inv);
+          return {
+            ...inv,
+            total: subtotal,
+            discount,
+            netAmount,
+            amountPaid: paid,
+            balance,
+          };
+        });
+        setInvoices(normalized);
+        console.log('📥 Fetched invoices:', normalized.length);
       }
     } catch (error) {
       console.error('❌ Error fetching invoices:', error);
@@ -171,6 +230,7 @@ const BillingPage: React.FC = () => {
     setSearchedPatients([]);
     setBillItems([]);
     setHasAutoAddedFoundationFee(false);
+    setManualDiscount('');
   };
 
   useEffect(() => {
@@ -228,9 +288,11 @@ const BillingPage: React.FC = () => {
 
   const subtotal = billItems.reduce((sum, item) => sum + item.total, 0);
   
-  // ASF Staff (and legacy ASF family records) are free, others pay
-  const isFreeService = selectedPatient ? isStaffType(selectedPatient.patientType) || isLegacyFamilyType(selectedPatient.patientType) : false;
-  const discount = isFreeService ? subtotal : 0;
+  // All ASF-affiliated types get free services
+  const isFreeService = selectedPatient ? (ALL_FREE_TYPES as readonly string[]).includes(selectedPatient.patientType) : false;
+  // Allow manual discount for civilians; auto-full-discount for ASF
+  const manualDiscountValue = !isFreeService && manualDiscount ? parseFloat(manualDiscount) || 0 : 0;
+  const discount = isFreeService ? subtotal : Math.min(manualDiscountValue, subtotal);
   const tax = 0;
   const grandTotal = Math.max(subtotal - discount + tax, 0);
 
@@ -274,6 +336,7 @@ const BillingPage: React.FC = () => {
         // Reset form
         clearSelectedPatient();
         setBillItems([]);
+        setManualDiscount('');
         setActiveTab('list');
       }
     } catch (error) {
@@ -313,34 +376,9 @@ const BillingPage: React.FC = () => {
   };
 
   const handlePrintInvoice = (invoice: any) => {
-    // Convert API data to match InvoiceData interface
-    const invoiceData = {
-      invoiceNo: invoice.invoiceNo,
-      date: new Date(invoice.createdAt).toISOString().split('T')[0],
-      dueDate: invoice.dueDate || new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
-      status: invoice.paymentStatus as 'paid' | 'pending' | 'partial',
-      patientType: invoice.patientType,
-      patient: {
-        name: invoice.patientName || 'N/A',
-        mrNo: invoice.patientNo || '',
-        forceNo: invoice.forceNo || '',
-        phone: '',
-        address: '',
-      },
-      items: invoice.items || [],
-      subtotal: invoice.total || 0,
-      discount: invoice.discount || 0,
-      tax: 0,
-      grandTotal: invoice.netAmount || invoice.total || 0,
-      amountPaid: 0,
-      balance: invoice.netAmount || invoice.total || 0,
-      paymentMethod: invoice.paymentMethod || '',
-      paymentRef: invoice.transactionId || '',
-      createdBy: 'Receptionist',
-    };
+    const invoiceData = mapInvoiceToTemplate(invoice);
     setSelectedInvoice(invoiceData as typeof sampleInvoice);
     setActiveTab('view');
-    // The print button is in the BillingInvoiceTemplate component itself
   };
 
   const handleProcessPayment = async () => {
@@ -356,30 +394,29 @@ const BillingPage: React.FC = () => {
 
     setProcessingPayment(true);
     try {
-      const amount = parseFloat(paymentAmount);
-      const outstandingBalance = (selectedInvoiceForPayment.netAmount || selectedInvoiceForPayment.total || 0);
-
-      // Allow overpayment (change will be returned to patient)
-      const effectivePayment = Math.min(amount, outstandingBalance);
+      const amountReceived = parseFloat(paymentAmount);
+      const { netAmount, paid, balance } = resolveInvoiceAmounts(selectedInvoiceForPayment);
+      const newPaidTotal = paid + amountReceived;
+      const newBalance = Math.max(netAmount - newPaidTotal, 0);
+      const change = Math.max(amountReceived - balance, 0);
+      const newStatus = newBalance <= 0 ? 'paid' : 'partial';
 
       console.log('💳 Processing payment for invoice:', selectedInvoiceForPayment.invoiceNo);
-      
-      // Determine new payment status
-      const newStatus = amount >= outstandingBalance ? 'paid' : 'partial';
 
-      // Update invoice via API
       const response = await api.updateInvoice(selectedInvoiceForPayment.id, {
         paymentStatus: newStatus,
-        paymentMethod: paymentMethod,
+        paymentMethod,
         transactionId: paymentRef || `RCPT-${Date.now()}`,
+        amountPaid: newPaidTotal,
+        balance: newBalance,
+        amountReceived,
       });
 
       if (response.success) {
         console.log('✅ Payment processed:', newStatus);
-        const change = amount - outstandingBalance;
         const changeMsg = change > 0 ? ` | Return to patient: Rs. ${change.toLocaleString()}` : '';
         toast.success('Payment processed successfully!', {
-          description: `Received: Rs. ${amount.toLocaleString()} | Status: ${newStatus}${changeMsg}`,
+          description: `Received: Rs. ${amountReceived.toLocaleString()} | Status: ${newStatus}${changeMsg}`,
         });
 
         // Refresh invoices and reset form
@@ -486,6 +523,7 @@ const BillingPage: React.FC = () => {
                       <TableHead>Invoice No</TableHead>
                       <TableHead>Patient Name</TableHead>
                       <TableHead>Type</TableHead>
+                      <TableHead>Source</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead>Status</TableHead>
@@ -514,6 +552,11 @@ const BillingPage: React.FC = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
+                          <Badge variant="outline">
+                            {inv.source || 'Manual'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                           {new Date(inv.createdAt).toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'short',
@@ -521,7 +564,16 @@ const BillingPage: React.FC = () => {
                           })}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          Rs. {(inv.netAmount || inv.total || 0).toLocaleString()}
+                          {inv.paymentStatus === 'paid' ? (
+                            <span className="text-green-600">Rs. {(inv.netAmount ?? inv.total ?? 0).toLocaleString()}</span>
+                          ) : (
+                            <div>
+                              <span>Rs. {(inv.netAmount ?? inv.total ?? 0).toLocaleString()}</span>
+                              {inv.balance > 0 && (
+                                <p className="text-xs text-red-500">Due: Rs. {inv.balance.toLocaleString()}</p>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -536,31 +588,7 @@ const BillingPage: React.FC = () => {
                               variant="ghost"
                               size="icon"
                               onClick={() => {
-                                // Convert API data to match InvoiceData interface
-                                const invoiceData = {
-                                  invoiceNo: inv.invoiceNo,
-                                  date: new Date(inv.createdAt).toISOString().split('T')[0],
-                                  dueDate: inv.dueDate || new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
-                                  status: inv.paymentStatus as 'paid' | 'pending' | 'partial',
-                                  patientType: inv.patientType,
-                                  patient: {
-                                    name: inv.patientName || 'N/A',
-                                    mrNo: inv.patientNo || '',
-                                    forceNo: inv.forceNo || '',
-                                    phone: '',
-                                    address: '',
-                                  },
-                                  items: inv.items || [],
-                                  subtotal: inv.total || 0,
-                                  discount: inv.discount || 0,
-                                  tax: 0,
-                                  grandTotal: inv.netAmount || inv.total || 0,
-                                  amountPaid: 0,
-                                  balance: inv.netAmount || inv.total || 0,
-                                  paymentMethod: inv.paymentMethod || '',
-                                  paymentRef: inv.transactionId || '',
-                                  createdBy: 'Receptionist',
-                                };
+                                const invoiceData = mapInvoiceToTemplate(inv);
                                 setSelectedInvoice(invoiceData as typeof sampleInvoice);
                                 setActiveTab('view');
                               }}
@@ -576,6 +604,7 @@ const BillingPage: React.FC = () => {
                                 size="icon"
                                 onClick={() => {
                                   setSelectedInvoiceForPayment(inv);
+                                  setPaymentAmount(resolveInvoiceAmounts(inv).balance.toString());
                                   setActiveTab('payment');
                                 }}
                                 title="Process Payment"
@@ -686,12 +715,12 @@ const BillingPage: React.FC = () => {
 
                         {(isStaffType(selectedPatient.patientType) || isLegacyFamilyType(selectedPatient.patientType)) && (
                           <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
-                            ✅ ASF Staff - Services will be provided free of charge
+                            ✅ ASF Staff/Family - Services will be provided free of charge
                           </div>
                         )}
                         {isFoundationType(selectedPatient.patientType) && (
-                          <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-                            ℹ️ ASF Foundation/School - OPD consultation is set to Rs. 30 (applied below); Lab/X-Ray at ASF rates; Medicines free
+                          <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+                            ✅ ASF Foundation/School - All services free of charge
                           </div>
                         )}
                         {selectedPatient.patientType === 'CIVILIAN' && (
@@ -830,6 +859,23 @@ const BillingPage: React.FC = () => {
                       <span className="text-muted-foreground">Subtotal:</span>
                       <span className="font-medium">Rs. {subtotal.toLocaleString()}</span>
                     </div>
+
+                    {/* Manual discount field for civilians */}
+                    {!isFreeService && selectedPatient && (
+                      <div className="py-2 border-b">
+                        <Label className="text-sm text-muted-foreground">Discount (Rs.)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max={subtotal}
+                          placeholder="Enter discount amount"
+                          value={manualDiscount}
+                          onChange={(e) => setManualDiscount(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+
                     {discount > 0 && (
                       <div className="flex justify-between py-2 border-b">
                         <span className="text-muted-foreground">Discount (ASF):</span>
@@ -886,7 +932,7 @@ const BillingPage: React.FC = () => {
                     onValueChange={(invoiceNo) => {
                       const invoice = invoices.find((inv) => inv.invoiceNo === invoiceNo);
                       setSelectedInvoiceForPayment(invoice || null);
-                      setPaymentAmount('');
+                      setPaymentAmount(invoice ? resolveInvoiceAmounts(invoice).balance.toString() : '');
                     }}
                   >
                     <SelectTrigger>
@@ -897,8 +943,8 @@ const BillingPage: React.FC = () => {
                         .filter((inv) => inv.paymentStatus !== 'paid')
                         .map((inv) => (
                           <SelectItem key={inv.invoiceNo} value={inv.invoiceNo}>
-                            {inv.invoiceNo} - {inv.patient?.name || inv.patientName || 'N/A'} (Rs.{' '}
-                            {((inv.grandTotal || 0) - (inv.amountPaid || 0)).toLocaleString()})
+                            {inv.invoiceNo} - {inv.patientName || inv.patient?.name || 'N/A'} (Rs.{' '}
+                            {resolveInvoiceAmounts(inv).balance.toLocaleString()})
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -924,16 +970,16 @@ const BillingPage: React.FC = () => {
                         <div className="grid grid-cols-3 gap-4">
                           <div className="bg-white p-3 rounded border">
                             <p className="text-xs text-muted-foreground">Bill Amount</p>
-                            <p className="font-bold text-lg">Rs. {(selectedInvoiceForPayment.netAmount || selectedInvoiceForPayment.total || 0).toLocaleString()}</p>
+                            <p className="font-bold text-lg">Rs. {(selectedInvoiceForPayment.netAmount ?? selectedInvoiceForPayment.total ?? 0).toLocaleString()}</p>
                           </div>
                           <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
                             <p className="text-xs text-muted-foreground">Previous Payment</p>
-                            <p className="font-bold text-lg">Rs. {(selectedInvoiceForPayment.amountPaid || 0).toLocaleString()}</p>
+                            <p className="font-bold text-lg">Rs. {(selectedInvoiceForPayment.amountPaid ?? 0).toLocaleString()}</p>
                           </div>
                           <div className="bg-red-50 p-3 rounded border border-red-200">
                             <p className="text-xs text-muted-foreground">Amount Due</p>
                             <p className="font-bold text-lg text-red-700">
-                              Rs. {((selectedInvoiceForPayment.netAmount || selectedInvoiceForPayment.total || 0) - (selectedInvoiceForPayment.amountPaid || 0)).toLocaleString()}
+                              Rs. {((selectedInvoiceForPayment.netAmount ?? selectedInvoiceForPayment.total ?? 0) - (selectedInvoiceForPayment.amountPaid ?? 0)).toLocaleString()}
                             </p>
                           </div>
                         </div>
@@ -959,7 +1005,7 @@ const BillingPage: React.FC = () => {
                       {paymentAmount && (
                         <div className="space-y-3">
                           {(() => {
-                            const amountDue = (selectedInvoiceForPayment.netAmount || selectedInvoiceForPayment.total || 0) - (selectedInvoiceForPayment.amountPaid || 0);
+                            const amountDue = (selectedInvoiceForPayment.netAmount ?? selectedInvoiceForPayment.total ?? 0) - (selectedInvoiceForPayment.amountPaid ?? 0);
                             const amountReceived = parseFloat(paymentAmount) || 0;
                             const change = amountReceived - amountDue;
                             const isOverpayment = change > 0;

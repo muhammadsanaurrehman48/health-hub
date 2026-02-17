@@ -23,14 +23,21 @@ const AdminDashboard: React.FC = () => {
     totalUsers: 0, 
     departments: 0, 
     todayPatients: 0, 
-    systemHealth: '0%',
+    todayRegistrations: 0,
+    todayInvoices: 0,
+    todayRevenue: 0,
     totalPatients: 0,
     totalAppointments: 0,
+    totalPrescriptions: 0,
+    totalLabRequests: 0,
+    totalRadiologyRequests: 0,
+    totalInvoices: 0,
     totalRevenue: 0,
+    paidRevenue: 0,
+    pendingRevenue: 0,
   });
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [trends, setTrends] = useState({ users: 0, patients: 0, appointments: 0 });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,18 +54,6 @@ const AdminDashboard: React.FC = () => {
         
         if (statsRes?.success && statsRes?.data) {
           setStats(statsRes.data);
-          setTrends({ users: 12, patients: 8, appointments: 15 });
-        } else {
-          // Set default stats if API fails
-          setStats({ 
-            totalUsers: 0, 
-            departments: 0, 
-            todayPatients: 0, 
-            systemHealth: '98%',
-            totalPatients: 0,
-            totalAppointments: 0,
-            totalRevenue: 0,
-          });
         }
         
         if (activitiesRes?.success && activitiesRes?.data) {
@@ -66,15 +61,6 @@ const AdminDashboard: React.FC = () => {
         }
       } catch (error) {
         console.error('Error fetching admin data:', error);
-        setStats({ 
-          totalUsers: 0, 
-          departments: 0, 
-          todayPatients: 0, 
-          systemHealth: '98%',
-          totalPatients: 0,
-          totalAppointments: 0,
-          totalRevenue: 0,
-        });
       } finally {
         setLoading(false);
       }
@@ -103,7 +89,6 @@ const AdminDashboard: React.FC = () => {
             subtitle="Active staff members"
             icon={Users}
             variant="primary"
-            trend={{ value: trends.users, isPositive: true }}
           />
           <StatCard
             title="Departments"
@@ -115,10 +100,9 @@ const AdminDashboard: React.FC = () => {
           <StatCard
             title="Today's Patients"
             value={stats.todayPatients}
-            subtitle="OPD + IPD combined"
+            subtitle={`${stats.todayRegistrations} new registrations`}
             icon={Activity}
             variant="warning"
-            trend={{ value: trends.patients, isPositive: true }}
           />
           <StatCard
             title="Total Patients"
@@ -133,12 +117,11 @@ const AdminDashboard: React.FC = () => {
             subtitle="Total scheduled"
             icon={TrendingUp}
             variant="success"
-            trend={{ value: trends.appointments, isPositive: true }}
           />
           <StatCard
             title="Total Revenue"
-            value={`Rs. ${(stats.totalRevenue / 100000).toFixed(1)}L`}
-            subtitle="Gross revenue"
+            value={`Rs. ${stats.totalRevenue >= 100000 ? (stats.totalRevenue / 100000).toFixed(1) + 'L' : stats.totalRevenue.toLocaleString()}`}
+            subtitle={`Pending: Rs. ${stats.pendingRevenue?.toLocaleString() || 0}`}
             icon={DollarSign}
             variant="success"
           />
@@ -183,32 +166,37 @@ const AdminDashboard: React.FC = () => {
 
         {/* Recent Activity */}
         <div className="grid lg:grid-cols-2 gap-6">
-          <RecentActivity title="Recent System Activity" activities={activities.length > 0 ? activities : [
-            { id: '1', title: 'System Started', description: 'Server initialized', status: 'success', time: new Date().toLocaleTimeString() },
-            { id: '2', title: 'Database Connected', description: 'MongoDB connected successfully', status: 'success', time: new Date(Date.now() - 5 * 60000).toLocaleTimeString() }
-          ]} />
+          <RecentActivity title="Recent System Activity" activities={activities} />
           <div className="bg-card rounded-xl border border-border p-6">
             <h3 className="font-semibold text-foreground mb-4">System Overview</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Database Status</span>
-                <span className="badge-completed">Healthy</span>
+                <span className="text-sm text-muted-foreground">Total Prescriptions</span>
+                <span className="text-sm font-medium">{stats.totalPrescriptions || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">API Response Time</span>
-                <span className="text-sm font-medium">45ms</span>
+                <span className="text-sm text-muted-foreground">Lab Requests</span>
+                <span className="text-sm font-medium">{stats.totalLabRequests || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Active Sessions</span>
-                <span className="text-sm font-medium">23</span>
+                <span className="text-sm text-muted-foreground">Radiology Requests</span>
+                <span className="text-sm font-medium">{stats.totalRadiologyRequests || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Last Backup</span>
-                <span className="text-sm font-medium">Today, 03:00 AM</span>
+                <span className="text-sm text-muted-foreground">Total Invoices</span>
+                <span className="text-sm font-medium">{stats.totalInvoices || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">System Health</span>
-                <span className="text-sm font-medium text-green-600">98%</span>
+                <span className="text-sm text-muted-foreground">Today's Revenue</span>
+                <span className="text-sm font-medium text-green-600">Rs. {(stats.todayRevenue || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Paid Revenue</span>
+                <span className="text-sm font-medium text-green-600">Rs. {(stats.paidRevenue || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Pending Revenue</span>
+                <span className="text-sm font-medium text-orange-600">Rs. {(stats.pendingRevenue || 0).toLocaleString()}</span>
               </div>
             </div>
           </div>

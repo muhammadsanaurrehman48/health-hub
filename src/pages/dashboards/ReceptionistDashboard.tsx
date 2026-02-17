@@ -20,22 +20,25 @@ import {
 const ReceptionistDashboard: React.FC = () => {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+  const [activeTokenCount, setActiveTokenCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [appointmentsRes, patientsRes] = await Promise.all([
+        const [appointmentsRes, patientsRes, invoicesRes, queuesRes] = await Promise.all([
           api.getAppointments(),
-          api.getPatients()
+          api.getPatients(),
+          api.getInvoices().catch(() => ({ success: false, data: [] })),
+          api.getAllQueues().catch(() => ({ success: false, data: [] })),
         ]);
         if (appointmentsRes.success) {
           setAppointments(appointmentsRes.data);
-          // Create activities from recent appointments
           const recentActivities = appointmentsRes.data.slice(0, 4).map((apt: any, idx: number) => ({
             id: String(idx + 1),
-            title: apt.status === 'scheduled' ? 'Appointment Scheduled' : 'Patient Registered',
+            title: apt.status === 'scheduled' ? 'Appointment Scheduled' : apt.status === 'completed' ? 'Appointment Completed' : 'Patient Update',
             description: `${apt.patientName || 'Patient'} - ${apt.doctor || 'Doctor'}`,
             time: apt.date || 'Recently',
             status: apt.status === 'completed' ? 'completed' : 'active'
@@ -44,6 +47,14 @@ const ReceptionistDashboard: React.FC = () => {
         }
         if (patientsRes.success) {
           setPatients(patientsRes.data);
+        }
+        if (invoicesRes.success) {
+          setInvoices(invoicesRes.data || []);
+        }
+        if (queuesRes.success) {
+          // Count total waiting patients across all queues
+          const totalWaiting = (queuesRes.data || []).reduce((sum: number, q: any) => sum + (q.waitingPatients || 0), 0);
+          setActiveTokenCount(totalWaiting);
         }
       } catch (error) {
         console.error('Error fetching receptionist data:', error);
@@ -60,8 +71,10 @@ const ReceptionistDashboard: React.FC = () => {
   }).length;
 
   const pendingAppointments = appointments.filter((a: any) => a.status === 'scheduled').length;
-  const activeTokens = appointments.filter((a: any) => a.status === 'in-progress').length;
-  const billsGenerated = appointments.filter((a: any) => a.status === 'completed').length;
+
+  // Count today's invoices from DB
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayBills = invoices.filter((inv: any) => inv.createdAt?.startsWith(todayStr)).length;
 
   if (loading) {
     return (
@@ -84,7 +97,6 @@ const ReceptionistDashboard: React.FC = () => {
             subtitle="New patients today"
             icon={UserPlus}
             variant="primary"
-            trend={{ value: 15, isPositive: true }}
           />
           <StatCard
             title="Pending Appointments"
@@ -95,14 +107,14 @@ const ReceptionistDashboard: React.FC = () => {
           />
           <StatCard
             title="Active Tokens"
-            value={activeTokens}
+            value={activeTokenCount}
             subtitle="Currently in queue"
             icon={Ticket}
             variant="success"
           />
           <StatCard
             title="Bills Generated"
-            value={billsGenerated}
+            value={todayBills}
             subtitle="Today's invoices"
             icon={Receipt}
             variant="primary"

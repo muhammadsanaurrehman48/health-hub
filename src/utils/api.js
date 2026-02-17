@@ -449,6 +449,41 @@ class ApiClient {
     return this.request(`/admin/analytics?period=${period}`);
   }
 
+  // Admin full-access endpoints
+  async getAdminPatients(period) {
+    const params = period ? `?period=${period}` : '';
+    return this.request(`/admin/patients${params}`);
+  }
+
+  async getAdminAppointments(period) {
+    const params = period ? `?period=${period}` : '';
+    return this.request(`/admin/appointments${params}`);
+  }
+
+  async getAdminPrescriptions(period) {
+    const params = period ? `?period=${period}` : '';
+    return this.request(`/admin/prescriptions${params}`);
+  }
+
+  async getAdminLabRequests(period) {
+    const params = period ? `?period=${period}` : '';
+    return this.request(`/admin/lab-requests${params}`);
+  }
+
+  async getAdminRadiologyRequests(period) {
+    const params = period ? `?period=${period}` : '';
+    return this.request(`/admin/radiology-requests${params}`);
+  }
+
+  async getAdminInvoices(period) {
+    const params = period ? `?period=${period}` : '';
+    return this.request(`/admin/invoices${params}`);
+  }
+
+  async getAdminSummary(period = 'today') {
+    return this.request(`/admin/summary?period=${period}`);
+  }
+
   async downloadReport(reportType, format = 'csv') {
     const token = this.getAuthToken();
     const url = `${this.baseURL}/admin/download-report?type=${reportType}&format=${format}`;

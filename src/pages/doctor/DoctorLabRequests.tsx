@@ -93,6 +93,18 @@ const formatResult = (result: any): string => {
   return String(result);
 };
 
+// Remove duplicate requests that occasionally arrive twice from the API
+const dedupeRequests = (requests: any[]) => {
+  const seen = new Map<string, any>();
+  requests.forEach((req) => {
+    const key = req.id || req.requestNo || `${req.patientName}-${req.test}-${req.requestDate}`;
+    if (!seen.has(key)) {
+      seen.set(key, req);
+    }
+  });
+  return Array.from(seen.values());
+};
+
 const DoctorLabRequests: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
@@ -132,7 +144,7 @@ const DoctorLabRequests: React.FC = () => {
           result: formatResult(req.result || req.summary || '-'),
           fullData: req,
         }));
-        setLabRequests(requests);
+        setLabRequests(dedupeRequests(requests));
       }
 
       if (patientsRes.success && patientsRes.data) {
