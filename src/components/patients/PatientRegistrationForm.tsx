@@ -42,8 +42,8 @@ const PatientRegistrationForm: React.FC = () => {
   const [gender, setGender] = useState('');
   const [rank, setRank] = useState('');
   const [address, setAddress] = useState('');
-  const emptyFamilyMember = { name: '', gender: '', dateOfBirth: '', bloodGroup: '', relationToHead: '', phone: '', cnic: '' };
-  const [familyMembers, setFamilyMembers] = useState([emptyFamilyMember]);
+  const createEmptyFamilyMember = () => ({ name: '', gender: '', dateOfBirth: '', bloodGroup: '', relationToHead: '', phone: '', cnic: '' });
+  const [familyMembers, setFamilyMembers] = useState([createEmptyFamilyMember()]);
 
   const isAsfStaffType = patientType === 'ASF';
   const isFoundationType = patientType === 'ASF_FOUNDATION';
@@ -69,7 +69,7 @@ const PatientRegistrationForm: React.FC = () => {
   };
 
   const addFamilyMember = () => {
-    setFamilyMembers((prev) => [...prev, emptyFamilyMember]);
+    setFamilyMembers((prev) => [...prev, createEmptyFamilyMember()]);
   };
 
   const removeFamilyMember = (index: number) => {
@@ -98,6 +98,15 @@ const PatientRegistrationForm: React.FC = () => {
 
       const filteredFamilyMembers = familyMembers.filter((fm) => {
         return fm.name || fm.gender || fm.dateOfBirth || fm.bloodGroup || fm.relationToHead || fm.phone || fm.cnic;
+      });
+
+      // Deduplicate entries client-side before sending to backend to avoid accidental repeats
+      const dedupedFamilyMembers = filteredFamilyMembers.filter((fm, idx, arr) => {
+        const key = `${(fm.cnic || '').replace(/\D/g, '')}|${(fm.name || '').trim().toLowerCase()}|${fm.dateOfBirth || ''}|${fm.relationToHead || ''}`;
+        return arr.findIndex((other) => {
+          const otherKey = `${(other.cnic || '').replace(/\D/g, '')}|${(other.name || '').trim().toLowerCase()}|${other.dateOfBirth || ''}|${other.relationToHead || ''}`;
+          return otherKey === key;
+        }) === idx;
       });
 
       if (isAsfStaffType) {
@@ -129,7 +138,7 @@ const PatientRegistrationForm: React.FC = () => {
         address: requiresAddress ? address.trim() : undefined,
         familyMembers:
           isAsfStaffType
-            ? filteredFamilyMembers.map((fm) => ({
+            ? dedupedFamilyMembers.map((fm) => ({
                 ...fm,
                 name: fm.name.trim(),
               }))

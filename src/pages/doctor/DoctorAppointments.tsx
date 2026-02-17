@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -37,6 +38,7 @@ interface QueuePatient {
   age?: number;
   gender?: string;
   complaint?: string;
+  appointmentId?: string;
   status: 'waiting' | 'vitals_recorded' | 'serving' | 'completed' | 'skipped';
   position: number;
 }
@@ -60,15 +62,20 @@ const DoctorAppointments: React.FC = () => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRoom, setSelectedRoom] = useState<string>('');
+  const [availableRooms, setAvailableRooms] = useState<string[]>(allowedRooms);
   const [queueData, setQueueData] = useState<QueueData | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoDetected, setAutoDetected] = useState(false);
 
+  const normalizeRoom = (room: string | number | null | undefined) => (room ? String(room).trim() : '');
+  const roomOptions = Array.from(new Set([...allowedRooms, ...availableRooms])).filter(Boolean);
+
   useEffect(() => {
-    if (!selectedRoom && user?.roomNo) {
-      setSelectedRoom(String((user as any).roomNo));
+    const normalizedRoom = normalizeRoom((user as any)?.roomNo);
+    if (!selectedRoom && normalizedRoom) {
+      setSelectedRoom(normalizedRoom);
       setAutoDetected(true);
     }
   }, [selectedRoom, user?.roomNo]);
@@ -79,12 +86,18 @@ const DoctorAppointments: React.FC = () => {
       try {
         const response = await api.getAllQueues();
         if (response.success && response.data) {
-          const doctorName = user?.name || '';
-          const myQueue = (Array.isArray(response.data) ? response.data : []).find(
-            (q: any) => q.doctorName?.toLowerCase() === doctorName.toLowerCase()
-          );
-          if (myQueue) {
-            setSelectedRoom(myQueue.roomNo);
+          const queues = Array.isArray(response.data) ? response.data : [];
+          const detectedRooms = queues
+            .map((q: any) => normalizeRoom(q.roomNo))
+            .filter(Boolean);
+          if (detectedRooms.length) {
+            setAvailableRooms((prev) => Array.from(new Set([...prev, ...detectedRooms])));
+          }
+
+          const doctorName = (user?.name || '').toLowerCase().trim();
+          const myQueue = queues.find((q: any) => q.doctorName?.toLowerCase().trim() === doctorName);
+          if (myQueue?.roomNo) {
+            setSelectedRoom(normalizeRoom(myQueue.roomNo));
             setAutoDetected(true);
           }
         }
@@ -95,24 +108,18 @@ const DoctorAppointments: React.FC = () => {
     if (!selectedRoom) {
       detectDoctorRoom();
     }
-  }, [user]);
+  }, [user, selectedRoom]);
 
   // Fetch queue data for selected room
   useEffect(() => {
-    if (!selectedRoom) return;
-
-    if (!allowedRooms.includes(selectedRoom)) {
-      setError('Please select a valid room (1-4)');
-      setQueueData(null);
-      setLoading(false);
-      return;
-    }
+    const normalizedRoom = normalizeRoom(selectedRoom);
+    if (!normalizedRoom) return;
 
     const fetchQueueData = async () => {
       setLoading(true);
       try {
-        console.log('🔄 [Doctor] Fetching queue for room:', selectedRoom);
-        const response = await api.request(`/queue/room/${selectedRoom}`);
+        console.log('🔄 [Doctor] Fetching queue for room:', normalizedRoom);
+        const response = await api.request(`/queue/room/${normalizedRoom}`);
         if (response.success) {
           console.log('✅ [Doctor] Queue fetched:', {
             room: response.data.roomNo,
@@ -149,13 +156,9 @@ const DoctorAppointments: React.FC = () => {
 
   const handleRefresh = async () => {
     if (!selectedRoom) return;
-    if (!allowedRooms.includes(selectedRoom)) {
-      toast.error('Please select a valid room (1-4)');
-      return;
-    }
     setRefreshing(true);
     try {
-      const response = await api.request(`/queue/room/${selectedRoom}`);
+      const response = await api.request(`/queue/room/${normalizeRoom(selectedRoom)}`);
       if (response.success) {
         setQueueData(response.data);
         toast.success('Queue data refreshed');
@@ -169,12 +172,8 @@ const DoctorAppointments: React.FC = () => {
 
   const handleMoveToNext = async () => {
     if (!selectedRoom) return;
-    if (!allowedRooms.includes(selectedRoom)) {
-      toast.error('Please select a valid room (1-4)');
-      return;
-    }
     try {
-      const response = await api.request(`/queue/room/${selectedRoom}/next-patient`, {
+      const response = await api.request(`/queue/room/${normalizeRoom(selectedRoom)}/next-patient`, {
         method: 'POST',
       });
       if (response.success) {
@@ -186,14 +185,10 @@ const DoctorAppointments: React.FC = () => {
     }
   };
 
-  const handleCompleteAppointment = async (appointmentId: string) => {
-    if (!selectedRoom) return;
-    if (!allowedRooms.includes(selectedRoom)) {
-      toast.error('Please select a valid room (1-4)');
-      return;
-    }
+  const handleCompleteAppointment = async (appointmentId?: string) => {
+    if (!selectedRoom || !appointmentId) return;
     try {
-      const response = await api.request(`/queue/room/${selectedRoom}/complete-appointment/${appointmentId}`, {
+      const response = await api.request(`/queue/room/${normalizeRoom(selectedRoom)}/complete-appointment/${appointmentId}`, {
         method: 'POST',
       });
       if (response.success) {
@@ -277,6 +272,28 @@ const DoctorAppointments: React.FC = () => {
                 {queueData?.doctorName && (
                   <p className="text-sm text-muted-foreground mt-1">{queueData.doctorName} - {queueData.department || 'General'}</p>
                 )}
+                <div className="mt-3">
+                  <Select
+                    value={selectedRoom || ''}
+                    onValueChange={(value) => {
+                      setSelectedRoom(value);
+                      setError(null);
+                      setAutoDetected(false);
+                    }}
+                  >
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="Select room" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roomOptions.map((room) => (
+                        <SelectItem key={room} value={room}>{`Room ${room}`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!selectedRoom && (
+                    <p className="text-xs text-muted-foreground mt-1">Pick a room if auto-detect fails.</p>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <div className="space-y-1 text-right">
@@ -473,7 +490,7 @@ const DoctorAppointments: React.FC = () => {
                                   <Button 
                                     variant="outline" 
                                     size="sm"
-                                    onClick={() => handleCompleteAppointment(patient.forceNo || '')}
+                                    onClick={() => handleCompleteAppointment(patient.appointmentId)}
                                   >
                                     <CheckCircle className="w-4 h-4" />
                                   </Button>
@@ -492,7 +509,7 @@ const DoctorAppointments: React.FC = () => {
                                   <Button 
                                     variant="outline" 
                                     size="sm"
-                                    onClick={() => handleCompleteAppointment(patient.forceNo || '')}
+                                    onClick={() => handleCompleteAppointment(patient.appointmentId)}
                                   >
                                     <CheckCircle className="w-4 h-4" />
                                   </Button>
@@ -511,7 +528,7 @@ const DoctorAppointments: React.FC = () => {
                                   <Button 
                                     variant="outline" 
                                     size="sm"
-                                    onClick={() => handleCompleteAppointment(patient.forceNo || '')}
+                                    onClick={() => handleCompleteAppointment(patient.appointmentId)}
                                   >
                                     <CheckCircle className="w-4 h-4" />
                                   </Button>
