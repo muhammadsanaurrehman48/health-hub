@@ -25,6 +25,13 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import TokenTemplate from '@/components/templates/TokenTemplate';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
@@ -38,6 +45,8 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
+  Printer,
+  Eye,
 } from 'lucide-react';
 
 const allowedRooms = ['1', '2', '3', '4'];
@@ -79,6 +88,9 @@ const AppointmentsPage: React.FC = () => {
   const [newDoctorId, setNewDoctorId] = useState('');
   const [newRoomNo, setNewRoomNo] = useState('');
 
+  // Token print sheet
+  const [isTokenSheetOpen, setIsTokenSheetOpen] = useState(false);
+  const [selectedToken, setSelectedToken] = useState<any>(null);
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -281,9 +293,28 @@ const AppointmentsPage: React.FC = () => {
       console.log('📤 Appointment creation response:', response);
       
       if (response?.success) {
+        const createdData = response.data || {};
+        const invoiceInfo = createdData.invoice;
+        const invoiceMsg = invoiceInfo
+          ? `Invoice ${invoiceInfo.invoiceNo} (Rs. ${invoiceInfo.amount}) - ${invoiceInfo.paymentStatus}`
+          : '';
+        
         toast.success('Appointment scheduled successfully!', {
-          description: `Room ${newRoomNo} | Dr. ${selectedDoctor.name} | Token: ${response.data?.token || 'Generated'}`,
+          description: `Room ${roomToUse} | Dr. ${selectedDoctor.name} | Token: ${createdData.token || 'Generated'}${invoiceMsg ? ` | ${invoiceMsg}` : ''}`,
         });
+        
+        // Show token print dialog immediately
+        setSelectedToken({
+          tokenNo: createdData.token || createdData.appointmentNo || 'N/A',
+          patientName: createdData.patientName || selectedPatient?.name || newPatientName,
+          mrNo: createdData.mrNo || '',
+          department: createdData.department || selectedDoctor.department || 'OPD',
+          doctor: createdData.doctor || selectedDoctor.name,
+          date: format(selectedDate, 'dd/MM/yyyy'),
+          time: createdData.time || format(new Date(), 'hh:mm a'),
+          type: 'OPD' as const,
+        });
+        setIsTokenSheetOpen(true);
         
         // Clear form
         setIsDialogOpen(false);
@@ -617,6 +648,29 @@ const AppointmentsPage: React.FC = () => {
                         <TableCell>{getStatusBadge(apt.status)}</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-2">
+                            {/* Print Token */}
+                            {apt.token && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                title="Print Token"
+                                onClick={() => {
+                                  setSelectedToken({
+                                    tokenNo: apt.token,
+                                    patientName: patientName,
+                                    mrNo: mrNo !== '-' ? mrNo : '',
+                                    department: apt.department || 'OPD',
+                                    doctor: doctor,
+                                    date: format(new Date(), 'dd/MM/yyyy'),
+                                    time: apt.time || format(new Date(), 'hh:mm a'),
+                                    type: 'OPD' as const,
+                                  });
+                                  setIsTokenSheetOpen(true);
+                                }}
+                              >
+                                <Printer className="w-4 h-4 text-primary" />
+                              </Button>
+                            )}
                             {apt.status === 'scheduled' && (
                               <>
                                 <Button 
@@ -650,6 +704,18 @@ const AppointmentsPage: React.FC = () => {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Token View/Print Sheet */}
+        <Sheet open={isTokenSheetOpen} onOpenChange={setIsTokenSheetOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>OPD Token</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6">
+              {selectedToken && <TokenTemplate data={selectedToken} />}
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </DashboardLayout>
   );

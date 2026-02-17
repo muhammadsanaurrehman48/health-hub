@@ -91,41 +91,41 @@ const EntriesPage: React.FC = () => {
       // Transform queue data to OPD tokens
       let tokens: any[] = [];
       
-      // First, get tokens from queues
+      // First, get tokens from queues (patients array now included in response)
       if (queueRes.success && queueRes.data) {
         tokens = (Array.isArray(queueRes.data) ? queueRes.data : []).flatMap((queue: any) => 
           (queue.patients || []).map((p: any, idx: number) => ({
-            id: p._id || `${queue._id}-${idx}`,
-            tokenNo: p.tokenNumber || `OPD-${String(idx + 1).padStart(3, '0')}`,
-            patientName: p.patientName || p.name || 'Unknown',
-            mrNo: p.mrNo || p.patientNo || '',
-            department: queue.department?.name || queue.departmentName || 'General',
-            doctor: queue.doctor?.name || queue.doctorName || 'Assigned Doctor',
-            time: p.arrivalTime ? format(new Date(p.arrivalTime), 'hh:mm a') : format(new Date(), 'hh:mm a'),
+            id: p._id || p.appointmentId || `${queue.id}-${idx}`,
+            tokenNo: p.tokenNo || `OPD-${String(idx + 1).padStart(3, '0')}`,
+            patientName: p.patientName || 'Unknown',
+            mrNo: p.patientNo || '',
+            department: queue.department || 'General',
+            doctor: queue.doctorName || 'Assigned Doctor',
+            roomNo: queue.roomNo,
+            time: p.createdAt ? format(new Date(p.createdAt), 'hh:mm a') : format(new Date(), 'hh:mm a'),
             status: p.status || 'waiting',
+            forceNo: p.forceNo || '',
           }))
         );
       }
 
-      // Also add appointments that are scheduled for today
-      if (appointmentsRes.success && appointmentsRes.data) {
+      // Also add appointments that are scheduled/vitals_recorded for today (fallback)
+      if (appointmentsRes.success && appointmentsRes.data && tokens.length === 0) {
         const today = new Date().toISOString().split('T')[0];
         const appointmentTokens = (Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [])
-          .filter((apt: any) => apt.date === today && apt.status === 'scheduled')
+          .filter((apt: any) => apt.date === today && (apt.status === 'scheduled' || apt.status === 'vitals_recorded'))
           .map((apt: any) => ({
             id: apt.id || apt._id,
             tokenNo: apt.token || apt.appointmentNo || `TKN-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
             patientName: apt.patient || apt.patientName || 'Unknown',
-            mrNo: apt.patientNo || '',
+            mrNo: apt.mrNo || '',
             department: apt.department || 'OPD',
             doctor: apt.doctor || apt.doctorName || 'Assigned Doctor',
             time: apt.time || format(new Date(), 'hh:mm a'),
             status: apt.status || 'scheduled',
             isAppointment: true,
           }));
-        // Merge with queue tokens, avoiding duplicates
-        const appointmentIds = new Set(appointmentTokens.map(t => t.id));
-        tokens = [...appointmentTokens, ...tokens.filter(t => !appointmentIds.has(t.id))];
+        tokens = appointmentTokens;
       }
 
       setOpdTokens(tokens);
@@ -165,9 +165,10 @@ const EntriesPage: React.FC = () => {
           id: doc.id || doc._id,
           name: doc.name || (doc.firstName && doc.lastName ? `${doc.firstName} ${doc.lastName}` : 'Unknown'),
           department: doc.department || 'OPD',
+          roomNo: doc.roomNo || doc.room || doc.assignedRoom || '',
         }));
         setDoctors(formattedDoctors);
-        console.log('✅ [FRONTEND] Doctors loaded for IPD selection:', formattedDoctors.length, 'doctors');
+        console.log('✅ [FRONTEND] Doctors loaded for OPD/IPD selection:', formattedDoctors.length, 'doctors');
       } else {
         console.warn('⚠️ [FRONTEND] Failed to load doctors from endpoint');
         setDoctors([]);
@@ -251,10 +252,11 @@ const EntriesPage: React.FC = () => {
       }
 
       // Create appointment with required fields
+      const doctorRoom = selectedDoctor.roomNo ? String(selectedDoctor.roomNo) : '1';
       const appointmentData = {
         patientId: selectedPatient.id,
         doctorId: selectedDoctor.id,
-        roomNo: '1', // Default room
+        roomNo: doctorRoom,
         date: new Date().toISOString().split('T')[0],
         time: format(new Date(), 'HH:mm'),
         reason: 'OPD Consultation',
@@ -263,12 +265,31 @@ const EntriesPage: React.FC = () => {
       const response = await api.createAppointment(appointmentData);
       
       if (response?.success) {
-        toast.success('OPD Token generated successfully!');
+        const createdData = response.data || {};
+        const invoiceInfo = createdData.invoice;
+        const invoiceMsg = invoiceInfo
+          ? ` | Invoice ${invoiceInfo.invoiceNo} (Rs. ${invoiceInfo.amount}) - ${invoiceInfo.paymentStatus}`
+          : '';
+        
+        toast.success(`OPD Token generated successfully!${invoiceMsg}`);
         setIsTokenDialogOpen(false);
         setTokenPatientName('');
         setTokenMrNo('');
         setTokenDepartment('');
         setTokenDoctor('');
+        
+        // Immediately show token print sheet
+        setSelectedToken({
+          tokenNo: createdData.token || createdData.appointmentNo || 'N/A',
+          patientName: createdData.patientName || tokenPatientName,
+          mrNo: createdData.mrNo || tokenMrNo || '',
+          department: createdData.department || tokenDepartment || 'OPD',
+          doctor: createdData.doctor || tokenDoctor,
+          date: format(new Date(), 'dd/MM/yyyy'),
+          time: createdData.time || format(new Date(), 'hh:mm a'),
+          type: 'OPD' as const,
+        });
+        setIsTokenSheetOpen(true);
         
         // Refresh the list from database to get official data
         setTimeout(() => fetchData(true), 500);
