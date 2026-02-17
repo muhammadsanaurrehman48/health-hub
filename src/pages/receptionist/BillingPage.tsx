@@ -54,9 +54,6 @@ interface Patient {
 
 const FOUNDATION_TYPES = ['ASF_FOUNDATION', 'ASF_SCHOOL'] as const;
 const LEGACY_FAMILY_TYPES = ['ASF_FAMILY'] as const;
-const ASF_FOUNDATION_CONSULT_FEE = 30;
-// All ASF-affiliated types that get free services (medicines, lab, radiology)
-const ALL_FREE_TYPES = ['ASF', 'ASF_FAMILY', 'ASF_FOUNDATION', 'ASF_SCHOOL'] as const;
 
 // OPD charges per patient type (must match backend pricing.js)
 const OPD_CHARGES: Record<string, number> = {
@@ -153,11 +150,6 @@ const BillingPage: React.FC = () => {
   const [serviceCatalog, setServiceCatalog] = useState<any>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [selectedCatalogService, setSelectedCatalogService] = useState('');
-
-  // Immediate payment during bill creation
-  const [collectPaymentNow, setCollectPaymentNow] = useState(false);
-  const [createPaymentMethod, setCreatePaymentMethod] = useState('cash');
-  const [createPaymentRef, setCreatePaymentRef] = useState('');
 
   // Payment processing
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<any>(null);
@@ -269,9 +261,6 @@ const BillingPage: React.FC = () => {
     setManualDiscount('');
     setServiceCatalog(null);
     setSelectedCatalogService('');
-    setCollectPaymentNow(false);
-    setCreatePaymentMethod('cash');
-    setCreatePaymentRef('');
   };
 
   useEffect(() => {
@@ -352,7 +341,7 @@ const BillingPage: React.FC = () => {
       return;
     }
 
-    const price = svc.isFree ? 0 : (svc.price || 0);
+    const price = svc.price || 0;
     setBillItems([
       ...billItems,
       {
@@ -381,11 +370,9 @@ const BillingPage: React.FC = () => {
 
   const subtotal = billItems.reduce((sum, item) => sum + item.total, 0);
   
-  // All ASF-affiliated types get free services
-  const isFreeService = selectedPatient ? (ALL_FREE_TYPES as readonly string[]).includes(selectedPatient.patientType) : false;
-  // Allow manual discount for civilians; auto-full-discount for ASF
-  const manualDiscountValue = !isFreeService && manualDiscount ? parseFloat(manualDiscount) || 0 : 0;
-  const discount = isFreeService ? subtotal : Math.min(manualDiscountValue, subtotal);
+  // Allow optional manual discount
+  const manualDiscountValue = manualDiscount ? parseFloat(manualDiscount) || 0 : 0;
+  const discount = Math.min(manualDiscountValue, subtotal);
   const tax = 0;
   const grandTotal = Math.max(subtotal - discount + tax, 0);
 
@@ -418,26 +405,13 @@ const BillingPage: React.FC = () => {
         source: 'Manual',
       };
 
-      // Include immediate payment info if receptionist is collecting now
-      if (collectPaymentNow && !isFreeService && grandTotal > 0) {
-        invoiceData.paymentMethod = createPaymentMethod;
-        invoiceData.amountPaid = grandTotal;
-        invoiceData.transactionId = createPaymentRef || undefined;
-      }
-
       const response = await api.createInvoice(invoiceData);
       
       if (response.success) {
         console.log('✅ Invoice created:', response.data.invoiceNo);
 
-        const statusLabel = isFreeService
-          ? 'Free (ASF) — No payment required'
-          : collectPaymentNow
-            ? `Paid via ${createPaymentMethod}`
-            : 'Payment pending';
-
         toast.success(response.message, {
-          description: `Invoice: ${response.data.invoiceNo} | Total: Rs. ${grandTotal.toLocaleString()} | ${statusLabel}`,
+          description: `Invoice: ${response.data.invoiceNo} | Total: Rs. ${grandTotal.toLocaleString()} | Payment pending`,
         });
 
         // Refresh invoices
@@ -497,7 +471,8 @@ const BillingPage: React.FC = () => {
       return;
     }
 
-    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+    const { balance: invoiceBalance } = resolveInvoiceAmounts(selectedInvoiceForPayment);
+    if (invoiceBalance > 0 && (!paymentAmount || parseFloat(paymentAmount) <= 0)) {
       toast.error('Please enter a valid payment amount');
       return;
     }
@@ -823,22 +798,6 @@ const BillingPage: React.FC = () => {
                           )}
                         </div>
 
-                        {(isStaffType(selectedPatient.patientType) || isLegacyFamilyType(selectedPatient.patientType)) && (
-                          <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
-                            ✅ ASF Staff/Family - Services will be provided free of charge
-                          </div>
-                        )}
-                        {isFoundationType(selectedPatient.patientType) && (
-                          <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
-                            ✅ ASF Foundation/School - All services free of charge
-                          </div>
-                        )}
-                        {selectedPatient.patientType === 'CIVILIAN' && (
-                          <div className="p-2 bg-orange-50 border border-orange-200 rounded text-sm text-orange-800">
-                            💳 Civilian (Private) - Full charges apply
-                          </div>
-                        )}
-
                         <Button
                           variant="outline"
                           size="sm"
@@ -878,7 +837,7 @@ const BillingPage: React.FC = () => {
                                     </SelectItem>
                                     {getCatalogServicesForDept('opd').map((s: any) => (
                                       <SelectItem key={`OPD::${s.name}`} value={`OPD::${s.name}`}>
-                                        {s.name} — Rs. {s.price} {s.isFree ? '(Free)' : ''}
+                                        {s.name} — Rs. {s.price}
                                       </SelectItem>
                                     ))}
                                   </>
@@ -891,7 +850,7 @@ const BillingPage: React.FC = () => {
                                     </SelectItem>
                                     {getCatalogServicesForDept('laboratory').map((s: any) => (
                                       <SelectItem key={`Laboratory::${s.name}`} value={`Laboratory::${s.name}`}>
-                                        {s.name} — Rs. {s.price} {s.isFree ? '(Free)' : ''}
+                                        {s.name} — Rs. {s.price}
                                       </SelectItem>
                                     ))}
                                   </>
@@ -904,7 +863,7 @@ const BillingPage: React.FC = () => {
                                     </SelectItem>
                                     {getCatalogServicesForDept('radiology').map((s: any) => (
                                       <SelectItem key={`Radiology::${s.name}`} value={`Radiology::${s.name}`}>
-                                        {s.name} — Rs. {s.price} {s.isFree ? '(Free)' : ''}
+                                        {s.name} — Rs. {s.price}
                                       </SelectItem>
                                     ))}
                                   </>
@@ -917,7 +876,7 @@ const BillingPage: React.FC = () => {
                                     </SelectItem>
                                     {getCatalogServicesForDept('pharmacy').map((s: any) => (
                                       <SelectItem key={`Pharmacy::${s.name}`} value={`Pharmacy::${s.name}`}>
-                                        {s.name} — Rs. {s.isFree ? 0 : s.price}{s.isFree ? ' (Free)' : ''}{s.stock != null ? ` [Stock: ${s.stock}]` : ''}
+                                        {s.name} — {serviceCatalog?.medicineFree ? 'Free' : `Rs. ${s.price}`}{s.stock != null ? ` [Stock: ${s.stock}]` : ''}
                                       </SelectItem>
                                     ))}
                                   </>
@@ -929,16 +888,10 @@ const BillingPage: React.FC = () => {
                             <Plus className="w-4 h-4 mr-1" /> Add
                           </Button>
                         </div>
-                        {serviceCatalog.isFreePatient && (
-                          <p className="text-xs text-green-700 mt-2">
-                            All services are free for {formatPatientType(selectedPatient.patientType)} patients. Full discount will be applied automatically.
-                          </p>
-                        )}
-                        {!serviceCatalog.isFreePatient && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Prices shown are for {formatPatientType(selectedPatient.patientType)} patients. OPD: Rs. {serviceCatalog.opdCharge}
-                          </p>
-                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Prices shown are for {formatPatientType(selectedPatient.patientType)} patients. OPD: Rs. {serviceCatalog.opdCharge}
+                          {serviceCatalog?.medicineFree && ' | Medicines: Free'}
+                        </p>
                       </div>
                     )}
                     {catalogLoading && (
@@ -1053,19 +1006,15 @@ const BillingPage: React.FC = () => {
                     <CardTitle>Bill Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* ── Conditions Summary ── */}
+                    {/* Patient type info */}
                     {selectedPatient && (
-                      <div className={`p-3 rounded-lg text-sm border ${isFreeService ? 'bg-green-50 border-green-200 text-green-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                      <div className="p-3 rounded-lg text-sm border bg-muted/50">
                         <p className="font-semibold mb-1">
-                          {isFreeService ? '✅ ASF Patient — Free Services' : '💳 Civilian — Standard Charges'}
+                          {formatPatientType(selectedPatient.patientType)}
                         </p>
-                        <ul className="text-xs space-y-0.5 list-disc list-inside">
-                          <li>OPD: Rs. {OPD_CHARGES[selectedPatient.patientType] ?? 100}</li>
-                          <li>Lab Tests: {isFreeService ? 'Free (100% discount)' : 'Civilian rates apply'}</li>
-                          <li>Radiology: {isFreeService ? 'Free (100% discount)' : 'Civilian rates apply'}</li>
-                          <li>Medicines: {isFreeService ? 'Free' : 'Charged at inventory price'}</li>
-                          {isFreeService && <li className="font-semibold">Auto-marked as Paid</li>}
-                        </ul>
+                        <p className="text-xs text-muted-foreground">
+                          OPD Rate: Rs. {OPD_CHARGES[selectedPatient.patientType] ?? 100}
+                        </p>
                       </div>
                     )}
 
@@ -1074,8 +1023,8 @@ const BillingPage: React.FC = () => {
                       <span className="font-medium">Rs. {subtotal.toLocaleString()}</span>
                     </div>
 
-                    {/* Manual discount field for civilians */}
-                    {!isFreeService && selectedPatient && (
+                    {/* Manual discount field */}
+                    {selectedPatient && (
                       <div className="py-2 border-b">
                         <Label className="text-sm text-muted-foreground">Discount (Rs.)</Label>
                         <Input
@@ -1092,9 +1041,7 @@ const BillingPage: React.FC = () => {
 
                     {discount > 0 && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-muted-foreground">
-                          {isFreeService ? 'ASF Discount (100%):' : 'Discount:'}
-                        </span>
+                        <span className="text-muted-foreground">Discount:</span>
                         <span className="font-medium text-success">- Rs. {discount.toLocaleString()}</span>
                       </div>
                     )}
@@ -1102,56 +1049,12 @@ const BillingPage: React.FC = () => {
                       <span className="text-muted-foreground">Tax:</span>
                       <span className="font-medium">Rs. {tax.toLocaleString()}</span>
                     </div>
-                    <div className={`flex justify-between py-3 px-3 rounded-lg ${isFreeService ? 'bg-green-100' : 'bg-primary/10'}`}>
+                    <div className="flex justify-between py-3 px-3 rounded-lg bg-primary/10">
                       <span className="font-semibold">Grand Total:</span>
-                      <span className={`font-bold text-lg ${isFreeService ? 'text-green-700' : 'text-primary'}`}>
+                      <span className="font-bold text-lg text-primary">
                         Rs. {grandTotal.toLocaleString()}
                       </span>
                     </div>
-
-                    {/* ── Immediate Payment Option (for non-free patients) ── */}
-                    {!isFreeService && selectedPatient && grandTotal > 0 && (
-                      <div className="border rounded-lg p-3 space-y-3">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={collectPaymentNow}
-                            onChange={(e) => setCollectPaymentNow(e.target.checked)}
-                            className="rounded border-gray-300"
-                          />
-                          <span className="text-sm font-medium">Collect payment now</span>
-                        </label>
-                        {collectPaymentNow && (
-                          <div className="space-y-2">
-                            <Select value={createPaymentMethod} onValueChange={setCreatePaymentMethod}>
-                              <SelectTrigger className="h-8 text-sm">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="cash">Cash</SelectItem>
-                                <SelectItem value="card">Card</SelectItem>
-                                <SelectItem value="check">Check</SelectItem>
-                                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            {createPaymentMethod !== 'cash' && (
-                              <Input
-                                className="h-8 text-sm"
-                                placeholder={createPaymentMethod === 'check' ? 'Check number' : 'Transaction ID'}
-                                value={createPaymentRef}
-                                onChange={(e) => setCreatePaymentRef(e.target.value)}
-                              />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {isFreeService && grandTotal === 0 && billItems.length > 0 && (
-                      <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700 text-center">
-                        Invoice will be auto-marked as <strong>Paid</strong>
-                      </div>
-                    )}
 
                     <Button
                       className="w-full"
@@ -1167,7 +1070,7 @@ const BillingPage: React.FC = () => {
                       ) : (
                         <>
                           <Receipt className="w-4 h-4 mr-2" />
-                          {isFreeService ? 'Generate Free Invoice' : collectPaymentNow ? 'Generate & Collect Payment' : 'Generate Invoice'}
+                          Generate Invoice
                         </>
                       )}
                     </Button>
@@ -1366,7 +1269,7 @@ const BillingPage: React.FC = () => {
                         ) : (
                           <>
                             <CreditCard className="w-4 h-4 mr-2" />
-                            Collect Payment
+                            {selectedInvoiceForPayment && resolveInvoiceAmounts(selectedInvoiceForPayment).balance <= 0 ? 'Mark as Processed' : 'Collect Payment'}
                           </>
                         )}
                       </Button>
