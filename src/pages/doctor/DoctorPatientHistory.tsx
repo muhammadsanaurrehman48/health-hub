@@ -167,7 +167,10 @@ const DoctorPatientHistory: React.FC = () => {
       // Filter labs by patient
       if (labRes.success && labRes.data) {
         labRes.data
-          .filter((l: any) => l.patientId === patientId)
+          .filter((l: any) => {
+            const pid = l.patientId && l.patientId._id ? l.patientId._id : l.patientId;
+            return pid?.toString?.() === patientId?.toString?.();
+          })
           .forEach((l: any) => {
             history.push({
               id: l._id || l.id,
@@ -185,7 +188,10 @@ const DoctorPatientHistory: React.FC = () => {
       // Filter radiology by patient
       if (radRes.success && radRes.data) {
         radRes.data
-          .filter((r: any) => r.patientId === patientId)
+          .filter((r: any) => {
+            const pid = r.patientId && r.patientId._id ? r.patientId._id : r.patientId;
+            return pid?.toString?.() === patientId?.toString?.();
+          })
           .forEach((r: any) => {
             const report = r.report || {};
             const findings = report.findings || '';

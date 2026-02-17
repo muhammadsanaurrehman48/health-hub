@@ -251,8 +251,75 @@ const ConsultationPage: React.FC = () => {
     );
   };
 
-  const handleSave = () => {
-    toast.success('Consultation saved successfully!');
+  const handleSave = async () => {
+    const appointmentId = location.state?.appointmentId || location.state?.id;
+
+    // Reuse patient resolution used in complete flow
+    let patientId: string | undefined;
+    const rawPatientId = location.state?.patient?.patientId;
+    if (rawPatientId) {
+      if (typeof rawPatientId === 'string') {
+        patientId = rawPatientId;
+      } else if (typeof rawPatientId === 'object') {
+        patientId = rawPatientId._id?.toString() || rawPatientId.id?.toString();
+      }
+    }
+    if (!patientId && location.state?.patient?._id) {
+      patientId = location.state.patient._id.toString();
+    }
+    if (!patientId && appointmentId) {
+      try {
+        const aptRes = await api.request(`/appointments/${appointmentId}`);
+        if (aptRes.success && aptRes.data) {
+          const aptPatientId = aptRes.data.patientId;
+          if (typeof aptPatientId === 'string') {
+            patientId = aptPatientId;
+          } else if (aptPatientId) {
+            patientId = aptPatientId._id?.toString() || aptPatientId.id?.toString();
+          }
+        }
+      } catch (e) {
+        console.error('⚠️ [DOCTOR] Could not fetch appointment for draft save:', e);
+      }
+    }
+
+    if (!patientId) {
+      toast.error('Could not identify the patient to save draft.');
+      return;
+    }
+
+    try {
+      setCompleting(true);
+      const payload = {
+        patientId,
+        appointmentId: appointmentId || undefined,
+        mrNo: patient.patientNo || patient.mrNo || patient.patientId?.patientNo || '',
+        forceNo: patient.forceNo || patient.patientId?.forceNo || '',
+        diagnosis: diagnosis || 'Draft - pending diagnosis',
+        medicines: medicines.map(m => ({
+          name: m.name,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          duration: m.duration,
+          instructions: m.instructions,
+        })),
+        labTests: selectedLabTests,
+        radiologyTests: selectedRadiologyTests,
+        notes: notes || '',
+      };
+
+      const res = await api.createPrescription(payload);
+      if (res.success) {
+        toast.success('Draft saved');
+      } else {
+        toast.error(res.message || 'Failed to save draft');
+      }
+    } catch (error: any) {
+      console.error('❌ [DOCTOR] Error saving draft:', error);
+      toast.error(error.message || 'Failed to save draft');
+    } finally {
+      setCompleting(false);
+    }
   };
 
   const [completing, setCompleting] = useState(false);
