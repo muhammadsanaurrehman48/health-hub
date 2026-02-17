@@ -67,6 +67,15 @@ class ApiClient {
 
       return data;
     } catch (error) {
+      // Provide helpful network diagnostics when connection fails
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        const msg = `Cannot connect to server at ${this.baseURL}. ` +
+          (window.location.hostname !== 'localhost'
+            ? 'Make sure the backend is running and firewall allows port 5000 on the host machine.'
+            : 'Make sure the backend server is running (cd backend && node server.js).');
+        console.error('🔴 Network Error:', msg);
+        throw new Error(msg);
+      }
       console.error('API Error:', error);
       throw error;
     }

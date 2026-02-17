@@ -88,24 +88,32 @@ const EntriesPage: React.FC = () => {
         api.getDoctors().catch(() => ({ success: false, data: [] })),
       ]);
 
-      // Transform queue data to OPD tokens
+      // Transform queue data to OPD tokens (today only)
       let tokens: any[] = [];
+      const todayDateStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       
-      // First, get tokens from queues (patients array now included in response)
+      // Get tokens from queues (backend already filters to today, but double-check on client side)
       if (queueRes.success && queueRes.data) {
         tokens = (Array.isArray(queueRes.data) ? queueRes.data : []).flatMap((queue: any) => 
-          (queue.patients || []).map((p: any, idx: number) => ({
-            id: p._id || p.appointmentId || `${queue.id}-${idx}`,
-            tokenNo: p.tokenNo || `OPD-${String(idx + 1).padStart(3, '0')}`,
-            patientName: p.patientName || 'Unknown',
-            mrNo: p.patientNo || '',
-            department: queue.department || 'General',
-            doctor: queue.doctorName || 'Assigned Doctor',
-            roomNo: queue.roomNo,
-            time: p.createdAt ? format(new Date(p.createdAt), 'hh:mm a') : format(new Date(), 'hh:mm a'),
-            status: p.status || 'waiting',
-            forceNo: p.forceNo || '',
-          }))
+          (queue.patients || [])
+            .filter((p: any) => {
+              // Safety-net: only show today's patients
+              if (!p.createdAt) return true; // no date = assume today
+              return new Date(p.createdAt).toISOString().split('T')[0] === todayDateStr;
+            })
+            .map((p: any, idx: number) => ({
+              id: p._id || p.appointmentId || `${queue.id}-${idx}`,
+              tokenNo: p.tokenNo || `OPD-${String(idx + 1).padStart(3, '0')}`,
+              patientName: p.patientName || 'Unknown',
+              mrNo: p.patientNo || '',
+              department: queue.department || 'General',
+              doctor: queue.doctorName || 'Assigned Doctor',
+              roomNo: queue.roomNo,
+              time: p.createdAt ? format(new Date(p.createdAt), 'hh:mm a') : format(new Date(), 'hh:mm a'),
+              createdAt: p.createdAt || null,
+              status: p.status || 'waiting',
+              forceNo: p.forceNo || '',
+            }))
         );
       }
 
@@ -127,6 +135,18 @@ const EntriesPage: React.FC = () => {
           }));
         tokens = appointmentTokens;
       }
+
+      // Sort tokens so newest appears at the top
+      tokens.sort((a: any, b: any) => {
+        // Parse time strings back, or use tokenNo for ordering
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (bTime !== aTime) return bTime - aTime;
+        // Fallback: sort by token number descending
+        const aNum = parseInt(String(a.tokenNo).replace(/\D/g, '')) || 0;
+        const bNum = parseInt(String(b.tokenNo).replace(/\D/g, '')) || 0;
+        return bNum - aNum;
+      });
 
       setOpdTokens(tokens);
 
