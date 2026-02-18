@@ -93,6 +93,14 @@ const formatResult = (result: any): string => {
   return String(result);
 };
 
+// Safely format a date value to YYYY-MM-DD, returning fallback on invalid input
+const safeDate = (value: any): string => {
+  if (!value) return new Date().toISOString().split('T')[0];
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+  return d.toISOString().split('T')[0];
+};
+
 // Remove duplicate requests that occasionally arrive twice from the API
 const dedupeRequests = (requests: any[]) => {
   const seen = new Map<string, any>();
@@ -139,7 +147,7 @@ const DoctorLabRequests: React.FC = () => {
           patientName: req.patient?.name || req.patientName || 'Unknown',
           mrNo: req.patient?.mrNo || req.mrNo || '',
           test: req.testName || req.test || 'Lab Test',
-          requestDate: req.requestDate ? new Date(req.requestDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          requestDate: safeDate(req.requestDate),
           status: req.status || 'pending',
           result: formatResult(req.result || req.summary || '-'),
           fullData: req,
@@ -233,8 +241,8 @@ const DoctorLabRequests: React.FC = () => {
             patientName: report.patient?.name || report.patientName || req.patientName,
             mrNo: report.patient?.mrNo || report.mrNo || req.mrNo,
             test: report.testName || report.test || req.test,
-            requestDate: report.requestDate ? new Date(report.requestDate).toISOString().split('T')[0] : req.requestDate,
-            reportDate: report.reportDate ? new Date(report.reportDate).toISOString().split('T')[0] : req.requestDate,
+            requestDate: safeDate(report.requestDate || req.requestDate),
+            reportDate: safeDate(report.reportDate || req.requestDate),
             results: report.results || [],
             remarks: report.remarks || 'No remarks',
             technician: report.technician || 'Lab Technician',
