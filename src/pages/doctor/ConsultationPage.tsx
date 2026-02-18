@@ -214,6 +214,9 @@ const ConsultationPage: React.FC = () => {
   // View prescription
   const [showPrescription, setShowPrescription] = useState(false);
 
+  // Track already-saved prescription to prevent duplicates
+  const [savedPrescriptionId, setSavedPrescriptionId] = useState<string | null>(null);
+
   const addMedicine = () => {
     if (newMedicineName) {
       setMedicines([
@@ -252,6 +255,9 @@ const ConsultationPage: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (completing) return; // Guard against concurrent calls
+    setCompleting(true);
+
     const appointmentId = location.state?.appointmentId || location.state?.id;
 
     // Reuse patient resolution used in complete flow
@@ -285,11 +291,11 @@ const ConsultationPage: React.FC = () => {
 
     if (!patientId) {
       toast.error('Could not identify the patient to save draft.');
+      setCompleting(false);
       return;
     }
 
     try {
-      setCompleting(true);
       const payload = {
         patientId,
         appointmentId: appointmentId || undefined,
@@ -308,8 +314,17 @@ const ConsultationPage: React.FC = () => {
         notes: notes || '',
       };
 
-      const res = await api.createPrescription(payload);
+      let res;
+      if (savedPrescriptionId) {
+        // Update existing prescription instead of creating a new one
+        res = await api.updatePrescription(savedPrescriptionId, payload);
+      } else {
+        res = await api.createPrescription(payload);
+      }
       if (res.success) {
+        if (!savedPrescriptionId && res.data?.id) {
+          setSavedPrescriptionId(res.data.id);
+        }
         toast.success('Draft saved');
       } else {
         toast.error(res.message || 'Failed to save draft');
@@ -325,6 +340,10 @@ const ConsultationPage: React.FC = () => {
   const [completing, setCompleting] = useState(false);
 
   const handleComplete = async () => {
+    // Immediately guard against double-clicks
+    if (completing) return;
+    setCompleting(true);
+
     console.log('🚀 [DOCTOR] handleComplete called. location.state:', JSON.stringify(location.state, null, 2));
     const appointmentId = location.state?.appointmentId || location.state?.id;
     
@@ -367,18 +386,18 @@ const ConsultationPage: React.FC = () => {
     
     if (!patientId) {
       toast.error('Could not identify the patient. Please go back and try again.');
+      setCompleting(false);
       return;
     }
     
     if (!diagnosis) {
       toast.error('Please enter a diagnosis before completing');
+      setCompleting(false);
       return;
     }
     
     try {
-      setCompleting(true);
-
-      // 1. Save prescription to database
+      // 1. Save prescription to database (create or update)
       const prescriptionPayload = {
         patientId,
         appointmentId: appointmentId || undefined,
@@ -398,7 +417,18 @@ const ConsultationPage: React.FC = () => {
       };
 
       console.log('📝 [DOCTOR] Saving prescription:', prescriptionPayload);
-      const rxRes = await api.createPrescription(prescriptionPayload);
+      let rxRes;
+      if (savedPrescriptionId) {
+        // Update the already-saved draft instead of creating a duplicate
+        rxRes = await api.updatePrescription(savedPrescriptionId, prescriptionPayload);
+        // Treat update as success with existing data
+        if (rxRes.success) {
+          rxRes.data = rxRes.data || { id: savedPrescriptionId };
+          console.log('✅ [DOCTOR] Prescription updated:', savedPrescriptionId);
+        }
+      } else {
+        rxRes = await api.createPrescription(prescriptionPayload);
+      }
       
       if (rxRes.success) {
         console.log('✅ [DOCTOR] Prescription saved:', rxRes.data?.rxNo || rxRes.data?.id);

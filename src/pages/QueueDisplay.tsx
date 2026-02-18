@@ -105,11 +105,10 @@ const QueueDisplay: React.FC = () => {
 
     fetchQueueData();
 
-    // Refresh every 3 seconds for real-time updates
+    // Refresh every 5 seconds for real-time updates
     const refreshTimer = setInterval(() => {
-      console.log('🔄 [Queue Display] Auto-refresh triggered for room:', roomNo);
       fetchQueueData();
-    }, 3000);
+    }, 5000);
     return () => clearInterval(refreshTimer);
   }, [roomNo]);
 
@@ -302,7 +301,7 @@ const QueueDisplay: React.FC = () => {
       {/* Footer */}
       <div className="mt-8 text-center text-sm text-muted-foreground">
         <p className="text-base">Please wait for your token number to be called • Keep your token safe</p>
-        <p className="mt-2 opacity-75">Auto-refresh every 10 seconds • Last updated: {currentTime.toLocaleTimeString()}</p>
+        <p className="mt-2 opacity-75">Auto-refresh every 5 seconds • Last updated: {currentTime.toLocaleTimeString()}</p>
       </div>
     </div>
   );

@@ -135,10 +135,8 @@ const PharmacyPrescriptions: React.FC = () => {
         })),
       });
       if (response.success) {
-        // Update local state
-        setPrescriptions(prev => prev.map(p =>
-          p.id === dispenseRx.id ? { ...p, status: 'dispensed' } : p
-        ));
+        // Remove dispensed prescription from the list (it's now completed)
+        setPrescriptions(prev => prev.filter(p => p.id !== dispenseRx.id));
         // Update local inventory
         setInventory(prev => prev.map(inv => {
           const dispensed = dispenseItems.find(d => d.name?.toLowerCase() === inv.name?.toLowerCase());
