@@ -162,7 +162,6 @@ const BillingPage: React.FC = () => {
   useEffect(() => {
     fetchInvoices();
     const interval = setInterval(() => {
-      console.log('🔄 Auto-refreshing invoices...');
       fetchInvoices();
     }, 10000); // Refresh every 10 seconds
     return () => clearInterval(interval);

@@ -290,8 +290,6 @@ const AppointmentsPage: React.FC = () => {
       // Call API to create appointment in database
       const response = await api.createAppointment(appointmentData);
       
-      console.log('📤 Appointment creation response:', response);
-      
       if (response?.success) {
         const createdData = response.data || {};
         const invoiceInfo = createdData.invoice;

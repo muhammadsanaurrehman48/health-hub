@@ -75,12 +75,10 @@ const ReferralLetterTemplateSimple: React.FC<ReferralLetterTemplateSimpleProps> 
           {/* Header */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-3 mb-3">
-              <img src={Logo} alt="ASF Medical" className="w-12 h-12" />
-              <div>
-                <h1 className="text-2xl font-bold">ASF Medical</h1>
-                <p className="text-sm text-muted-foreground">Karachi, Pakistan</p>
-              </div>
+              <img src={Logo} alt="Smart Hospital Management System" className="w-16 h-16" style={{maxWidth: '100%', height: 'auto'}} />
             </div>
+            <h1 className="text-2xl font-bold mt-2">Smart Hospital</h1>
+            <p className="text-sm text-muted-foreground">Management System</p>
             <h2 className="text-xl font-semibold mt-4">REFERRAL LETTER</h2>
           </div>
 

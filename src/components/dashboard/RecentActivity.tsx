@@ -6,7 +6,7 @@ interface Activity {
   title: string;
   description: string;
   time: string;
-  status?: 'pending' | 'active' | 'completed' | 'cancelled';
+  status?: 'pending' | 'active' | 'completed' | 'cancelled' | 'success' | 'warning' | 'processing' | 'error';
 }
 
 interface RecentActivityProps {
@@ -19,6 +19,10 @@ const statusStyles = {
   active: 'badge-active',
   completed: 'badge-completed',
   cancelled: 'badge-cancelled',
+  success: 'badge-completed',
+  warning: 'badge-pending',
+  processing: 'badge-active',
+  error: 'badge-cancelled',
 };
 
 export const RecentActivity: React.FC<RecentActivityProps> = ({ title, activities }) => {

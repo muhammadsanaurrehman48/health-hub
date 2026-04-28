@@ -87,11 +87,10 @@ const NurseVitals: React.FC = () => {
             };
           });
         
-        console.log('🏥 [NURSE] Loaded', scheduledAppointments.length, 'OPD appointments waiting for vitals');
+
         setPatients(scheduledAppointments);
       }
     } catch (error) {
-      console.error('Error fetching appointments:', error);
       toast.error('Failed to load patients');
     } finally {
       setLoading(false);

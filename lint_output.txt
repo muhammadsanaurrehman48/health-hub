@@ -1,0 +1,375 @@
+
+> vite_react_shadcn_ts@0.0.0 lint
+> eslint .
+
+
+D:\SmartHospital\health-hub\src\components\common\AnimatedBackground.tsx
+  161:6  warning  React Hook useEffect has missing dependencies: 'mousePos.x' and 'mousePos.y'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\SmartHospital\health-hub\src\components\patients\PatientSearch.tsx
+  32:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\components\templates\BillingInvoiceTemplate.tsx
+   61:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   64:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  328:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  330:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\components\ui\badge.tsx
+  29:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\SmartHospital\health-hub\src\components\ui\button.tsx
+  47:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\SmartHospital\health-hub\src\components\ui\command.tsx
+  24:11  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+D:\SmartHospital\health-hub\src\components\ui\form.tsx
+  129:10  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\SmartHospital\health-hub\src\components\ui\navigation-menu.tsx
+  111:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\SmartHospital\health-hub\src\components\ui\sidebar.tsx
+  636:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\SmartHospital\health-hub\src\components\ui\sonner.tsx
+  27:19  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\SmartHospital\health-hub\src\components\ui\textarea.tsx
+  5:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+D:\SmartHospital\health-hub\src\components\ui\toggle.tsx
+  37:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\SmartHospital\health-hub\src\contexts\AuthContext.tsx
+  22:5   error    Unnecessary try/catch wrapper                                                                                                   no-useless-catch
+  38:5   error    Unnecessary try/catch wrapper                                                                                                   no-useless-catch
+  66:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\SmartHospital\health-hub\src\contexts\NotificationContext.tsx
+   58:62  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  145:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\SmartHospital\health-hub\src\contexts\ThemeContext.tsx
+  66:6   warning  React Hook useEffect has a missing dependency: 'updateResolvedTheme'. Either include it or remove the dependency array          react-hooks/exhaustive-deps
+  71:6   warning  React Hook useEffect has a missing dependency: 'updateResolvedTheme'. Either include it or remove the dependency array          react-hooks/exhaustive-deps
+  82:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\SmartHospital\health-hub\src\pages\QueueDisplay.tsx
+  86:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\admin\AdminBillingOverview.tsx
+   42:44  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+   61:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   67:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  128:44  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  128:75  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  233:41  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  295:40  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  332:48  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\admin\AdminReports.tsx
+  33:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\admin\Departments.tsx
+  23:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\admin\UserManagement.tsx
+   42:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   44:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  102:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\dashboards\AdminDashboard.tsx
+  43:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\dashboards\BillingDashboard.tsx
+  20:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\dashboards\DoctorDashboard.tsx
+   25:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   37:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   61:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   62:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   63:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   65:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  133:75  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\dashboards\InventoryDashboard.tsx
+  20:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\dashboards\LaboratoryDashboard.tsx
+   20:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  132:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\dashboards\NurseDashboard.tsx
+  20:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\dashboards\PharmacyDashboard.tsx
+   20:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   21:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  147:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  167:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\dashboards\RadiologistDashboard.tsx
+   19:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  131:83  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\dashboards\ReceptionistDashboard.tsx
+   21:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   22:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   23:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   24:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   39:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   56:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   68:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   73:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   77:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  173:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  174:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  174:97  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\doctor\ConsultationPage.tsx
+   87:64  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   89:74  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:57  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  114:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  332:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  458:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  864:57  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\doctor\DoctorAppointments.tsx
+   76:51  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+   81:6   warning  React Hook useEffect has a missing dependency: 'user'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   91:22  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+   98:43  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+  130:54  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+  208:36  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+  209:25  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\doctor\DoctorLabRequests.tsx
+   83:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   97:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  105:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  120:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  123:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  144:84  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  159:95  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  233:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  291:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  630:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\doctor\DoctorPatientHistory.tsx
+   51:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   52:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   53:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   70:89  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  145:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  170:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  174:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  191:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  195:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  505:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\doctor\DoctorPrescriptions.tsx
+   56:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   59:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   60:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   84:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:95  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  193:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\doctor\DoctorRadiologyRequests.tsx
+   62:56   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   63:62   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   64:44   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   82:105  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:41   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  155:34   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  313:40   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\doctor\DoctorReferrals.tsx
+   80:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   81:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   85:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:89  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  212:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\laboratory\LabReports.tsx
+  27:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  29:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  63:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\laboratory\LaboratoryRequests.tsx
+   40:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   43:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   77:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   92:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  122:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\laboratory\ResultsEntry.tsx
+  31:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  33:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  64:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\laboratory\SampleCollection.tsx
+  19:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  50:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\nurse\CareNotes.tsx
+  31:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\nurse\NurseDashboard.tsx
+   44:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   62:78  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   72:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   88:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   89:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\nurse\NurseVitals.tsx
+   38:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   41:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   42:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   67:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   68:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:84  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  227:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\nurse\NurseWards.tsx
+  50:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\pharmacy\PharmacyInventory.tsx
+  39:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\pharmacy\PharmacyPrescriptions.tsx
+   49:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   50:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   55:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   58:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   94:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   96:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  157:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\radiology\CompletedReports.tsx
+  27:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  29:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  63:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\radiology\RadiologyRequests.tsx
+   42:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   46:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   80:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   95:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  129:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\radiology\UploadReports.tsx
+  31:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  78:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  93:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\receptionist\AppointmentsPage.tsx
+   54:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   61:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   67:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   79:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   80:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   81:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   93:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  121:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  139:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  211:70  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  343:70  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\receptionist\BillingPage.tsx
+   68:87  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   69:92  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   79:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   93:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  128:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  150:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  155:78  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  175:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  334:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  361:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  394:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  462:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  838:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  851:86  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  864:85  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  877:84  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\receptionist\EntriesPage.tsx
+   53:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   56:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   57:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   58:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   59:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   60:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   92:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   97:86  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  125:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  140:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  140:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  155:91  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  171:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  172:77  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  184:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  199:95  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  399:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  506:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  533:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  552:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  668:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  717:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\receptionist\ReceptionistDocuments.tsx
+   30:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   31:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   32:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   33:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   34:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   35:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   50:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   63:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  115:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  131:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  512:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\src\pages\receptionist\ReceptionistReferrals.tsx
+   81:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   82:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   86:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  113:89  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  221:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  255:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  643:66  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartHospital\health-hub\tailwind.config.ts
+  130:13  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+Ô£û 257 problems (241 errors, 16 warnings)
+
+

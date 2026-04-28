@@ -72,12 +72,12 @@ const PrescriptionTemplate: React.FC<PrescriptionTemplateProps> = ({ data }) => 
           {/* Header */}
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
-              <img src={Logo} alt="ASF Medical" className="w-16 h-16 rounded-lg" />
+              <img src={Logo} alt="Smart Hospital Management System" className="w-20 h-20 rounded-lg" />
               <div>
-                <h1 className="text-2xl font-bold text-primary">ASF Medical</h1>
-                <p className="text-sm text-muted-foreground">Health Management System</p>
+                <h1 className="text-2xl font-bold text-primary">Smart Hospital</h1>
+                <p className="text-sm text-muted-foreground">Management System</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Karachi | Tel: 021-1234567
+                  Health Management System | Comprehensive Hospital Solutions
                 </p>
               </div>
             </div>

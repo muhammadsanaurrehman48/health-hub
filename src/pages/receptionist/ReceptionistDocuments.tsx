@@ -396,11 +396,11 @@ const ReceptionistDocuments: React.FC = () => {
             <!-- Header -->
             <div class="header">
               <div class="header-left">
-                <div class="logo"><img src="${Logo}" alt="ASF Medical Logo" /></div>
+                <div class="logo"><img src="${Logo}" alt="Smart Hospital Management System" style="max-width: 100%; height: auto;" /></div>
                 <div class="hospital-info">
-                  <h1>ASF Medical</h1>
-                  <p>Healthcare Management System</p>
-                  <p>Karachi, Pakistan | Emergency: 0XXX-XXXXXXX</p>
+                  <h1>Smart Hospital</h1>
+                  <p>Management System</p>
+                  <p>Comprehensive Health Management Solutions</p>
                 </div>
               </div>
               <div class="prescription-no">
@@ -693,11 +693,11 @@ const ReceptionistDocuments: React.FC = () => {
             <!-- Header -->
             <div class="header">
               <div class="header-left">
-                <div class="logo"><img src="${Logo}" alt="ASF Medical Logo" /></div>
+                <div class="logo"><img src="${Logo}" alt="Smart Hospital Management System" style="max-width: 100%; height: auto;" /></div>
                 <div class="hospital-info">
-                  <h1>ASF Medical</h1>
-                  <p>Healthcare Management System</p>
-                  <p>Karachi, Pakistan | Emergency: 0XXX-XXXXXXX</p>
+                  <h1>Smart Hospital</h1>
+                  <p>Management System</p>
+                  <p>Comprehensive Health Management Solutions</p>
                 </div>
               </div>
               <div class="refno-section">

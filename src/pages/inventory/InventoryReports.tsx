@@ -23,7 +23,7 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { Download, Package, TrendingUp, DollarSign, Loader2, Clock, Printer } from 'lucide-react';
+import { Download, Package, TrendingUp, DollarSign, Loader2, Clock, Printer, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/utils/api';
 import { PrintHeader, PrintHide } from '@/components/common/PrintHeader';

@@ -161,11 +161,7 @@ const QueueDisplay: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <img src={Logo} alt="Smart Hospital" className="w-20 h-20 rounded-xl shadow-lg" />
-          <div>
-            <h1 className="text-4xl font-bold text-primary">Smart Hospital</h1>
-            <p className="text-xl text-muted-foreground">Queue Management System</p>
-          </div>
+          <img src={Logo} alt="Smart Hospital Management System" className="w-24 h-24 rounded-xl shadow-lg" style={{maxWidth: '100%', height: 'auto'}} />
         </div>
         <div className="text-right">
           <p className="text-5xl font-mono font-bold text-foreground">

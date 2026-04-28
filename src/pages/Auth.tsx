@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { rolesList, UserRole, ROLES } from '@/types/roles';
 import Logo from '@/assets/logo.png';
+import { AnimatedBackground } from '@/components/common/AnimatedBackground';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 import {
   Shield,
   UserPlus,
@@ -62,18 +64,30 @@ const Auth: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Background */}
+      <AnimatedBackground />
+
+      {/* Theme Toggle - Top Right */}
+      <div className="absolute top-6 right-6 z-20">
+        <ThemeToggle />
+      </div>
+
+      {/* Main Content Container */}
+      <div className="w-full max-w-md relative z-10">
         {/* Logo & Title */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 slide-in-top">
           <div className="flex justify-center mb-4">
-            <img src={Logo} alt="Smart Hospital" className="w-20 h-20 rounded-2xl shadow-lg" />
+            <img 
+              src={Logo} 
+              alt="Smart Hospital Management System" 
+              className="w-48 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 float-animate" 
+              style={{maxWidth: '100%', height: 'auto'}} 
+            />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Smart Hospital</h1>
-          <p className="text-muted-foreground mt-1">Health Management System</p>
         </div>
 
-        <Card className="border-border shadow-lg">
+        <Card className="border-border shadow-lg backdrop-blur-sm bg-card/95 hover:shadow-xl transition-all duration-300 slide-in-bottom fade-in-scale">
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl text-center">Welcome Back</CardTitle>
             <CardDescription className="text-center">
@@ -129,7 +143,11 @@ const Auth: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full transition-all duration-300 hover:scale-105 active:scale-95 pulse-glow" 
+                disabled={isLoading}
+              >
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
@@ -140,7 +158,7 @@ const Auth: React.FC = () => {
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
+        <p className="text-center text-sm text-muted-foreground mt-6 slide-in-bottom" style={{animationDelay: '0.2s'}}>
           © 2025 Smart Hospital HMS. All rights reserved.
         </p>
       </div>

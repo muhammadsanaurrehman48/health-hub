@@ -3,7 +3,6 @@ const API_BASE_URL = typeof window !== 'undefined'
   ? (() => {
       const envUrl = import.meta.env.VITE_API_URL;
       if (envUrl) {
-        console.log('📡 Using VITE_API_URL from environment:', envUrl);
         return envUrl;
       }
       
@@ -13,15 +12,11 @@ const API_BASE_URL = typeof window !== 'undefined'
       
       // If accessing from network IP, use that IP for API too
       if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-        const apiUrl = `${protocol}//` + hostname + ':5000/api';
-        console.log('📡 Detecting network access, using API URL:', apiUrl);
-        return apiUrl;
+        return `${protocol}//` + hostname + ':5000/api';
       }
       
       // Default to localhost
-      const defaultUrl = 'http://localhost:5000/api';
-      console.log('📡 Using default localhost API URL:', defaultUrl);
-      return defaultUrl;
+      return 'http://localhost:5000/api';
     })()
   : 'http://localhost:5000/api';
 
@@ -73,10 +68,8 @@ class ApiClient {
           (window.location.hostname !== 'localhost'
             ? 'Make sure the backend is running and firewall allows port 5000 on the host machine.'
             : 'Make sure the backend server is running (cd backend && node server.js).');
-        console.error('🔴 Network Error:', msg);
         throw new Error(msg);
       }
-      console.error('API Error:', error);
       throw error;
     }
   }

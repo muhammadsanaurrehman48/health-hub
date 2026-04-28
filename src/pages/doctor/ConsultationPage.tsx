@@ -116,7 +116,6 @@ const ConsultationPage: React.FC = () => {
           setAvailableMedicines([...new Set(medicines)]);
         }
       } catch (error) {
-        console.error('Failed to fetch inventory:', error);
         toast.error('Failed to load medicines from inventory');
       } finally {
         setInventoryLoading(false);
@@ -134,7 +133,6 @@ const ConsultationPage: React.FC = () => {
       try {
         const appointmentId = location.state?.appointmentId || location.state?.id;
         if (!appointmentId) {
-          console.log('⚠️ [DOCTOR] No appointment ID found');
           return;
         }
         
@@ -142,7 +140,6 @@ const ConsultationPage: React.FC = () => {
         const response = await api.getAppointmentVitals(appointmentId);
         
         if (response.success && response.data) {
-          console.log('✅ [DOCTOR] Vitals fetched from nurse:', response.data);
           setBloodPressure(response.data.bloodPressure || '');
           setPulse(response.data.pulse?.toString() || '');
           setTemperature(response.data.temperature?.toString() || '');

@@ -28,7 +28,7 @@ const NurseDashboard: React.FC = () => {
           setAdmittedPatients(response.data);
         }
       } catch (error) {
-        console.error('Error fetching nurse data:', error);
+        // Error handled by error boundary
       } finally {
         setLoading(false);
       }

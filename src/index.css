@@ -4,6 +4,34 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  /* Animation Delay Utilities */
+  .animation-delay-75 {
+    animation-delay: 75ms;
+  }
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+  .animation-delay-150 {
+    animation-delay: 150ms;
+  }
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+  .animation-delay-700 {
+    animation-delay: 700ms;
+  }
+  .animation-delay-1000 {
+    animation-delay: 1000ms;
+  }
+}
+
 /* ASF Medical Center - Health Management System Design System
    Medical-grade, calm, trustworthy visuals
    Designed for long working hours with zero decorative clutter
@@ -247,6 +275,409 @@
 
   .info-value {
     @apply text-sm font-medium text-foreground;
+  }
+
+  /* Theme Transition Animations */
+  * {
+    @apply transition-colors duration-300;
+  }
+
+  body {
+    @apply relative overflow-x-hidden;
+  }
+
+  /* Animated Gradient Background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(-45deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--secondary)), hsl(var(--primary-muted)));
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+    z-index: -1;
+    opacity: 0.03;
+    pointer-events: none;
+  }
+
+  /* Dark mode animated background */
+  .dark body::before {
+    animation: gradientShiftDark 15s ease infinite;
+    opacity: 0.05;
+  }
+
+  @keyframes gradientShift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @keyframes gradientShiftDark {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  /* Smooth icon transitions */
+  svg {
+    @apply transition-transform duration-300;
+  }
+
+  /* Enhanced button transitions */
+  button {
+    @apply transition-all duration-200;
+  }
+
+  button:active {
+    @apply scale-95;
+  }
+
+  /* Card hover effects with smooth transition */
+  .card-metric,
+  .card-interactive {
+    @apply transition-all duration-300;
+  }
+
+  .card-metric:hover,
+  .card-interactive:hover {
+    @apply shadow-lg;
+  }
+
+  /* Smooth input transitions */
+  input,
+  textarea,
+  select {
+    @apply transition-all duration-200;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply ring-2 ring-offset-2 ring-offset-background;
+  }
+
+  /* Dialog animations */
+  [role="dialog"] {
+    @apply transition-opacity duration-300;
+  }
+
+  /* Dropdown menu animations */
+  [role="menu"] {
+    @apply transition-all duration-200;
+  }
+
+  /* Table row hover effect */
+  tbody tr {
+    @apply transition-all duration-200;
+  }
+
+  /* Prevent theme transitions on page load */
+  html.no-transitions * {
+    @apply transition-none !important;
+  }
+
+  /* ===== ENHANCED ANIMATIONS ===== */
+
+  /* Floating Animation - Slow, gentle floating effect */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  .float-animate {
+    animation: float 8s ease-in-out infinite;
+  }
+
+  /* Pulse Glow Animation */
+  @keyframes pulseGlow {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(26, 95, 122, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 25px rgba(26, 95, 122, 0.6);
+    }
+  }
+
+  .pulse-glow {
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+
+  .dark .pulse-glow {
+    animation: pulseGlowDark 3s ease-in-out infinite;
+  }
+
+  @keyframes pulseGlowDark {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(102, 204, 204, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 25px rgba(102, 204, 204, 0.7);
+    }
+  }
+
+  /* Shimmer Animation */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 3s infinite;
+  }
+
+  .dark .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(102, 204, 204, 0.2),
+      transparent
+    );
+  }
+
+  /* Gradient Shift Animation */
+  @keyframes gradientFlow {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  .gradient-flow {
+    background-size: 200% 200%;
+    animation: gradientFlow 8s ease infinite;
+  }
+
+  /* Spin Animation */
+  @keyframes spinSlow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .spin-slow {
+    animation: spinSlow 20s linear infinite;
+  }
+
+  /* Scale Pulse */
+  @keyframes scalePulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+
+  .scale-pulse {
+    animation: scalePulse 2s ease-in-out infinite;
+  }
+
+  /* Bounce Animation */
+  @keyframes bounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .bounce-custom {
+    animation: bounce 2s ease-in-out infinite;
+  }
+
+  /* Slide In Animation */
+  @keyframes slideInFromLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideInFromRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideInFromTop {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideInFromBottom {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .slide-in-left {
+    animation: slideInFromLeft 0.6s ease-out forwards;
+  }
+
+  .slide-in-right {
+    animation: slideInFromRight 0.6s ease-out forwards;
+  }
+
+  .slide-in-top {
+    animation: slideInFromTop 0.6s ease-out forwards;
+  }
+
+  .slide-in-bottom {
+    animation: slideInFromBottom 0.6s ease-out forwards;
+  }
+
+  /* Fade In Scale */
+  @keyframes fadeInScale {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .fade-in-scale {
+    animation: fadeInScale 0.5s ease-out forwards;
+  }
+
+  /* Blink Animation */
+  @keyframes blink {
+    0%, 50%, 100% {
+      opacity: 1;
+    }
+    25%, 75% {
+      opacity: 0.5;
+    }
+  }
+
+  .blink-animate {
+    animation: blink 2s infinite;
+  }
+
+  /* Hue Rotate Animation */
+  @keyframes hueRotate {
+    0% {
+      filter: hue-rotate(0deg);
+    }
+    100% {
+      filter: hue-rotate(360deg);
+    }
+  }
+
+  .hue-rotate {
+    animation: hueRotate 8s linear infinite;
+  }
+
+  /* Vortex Animation */
+  @keyframes vortex {
+    0% {
+      transform: rotate(0deg) scale(1);
+    }
+    50% {
+      transform: rotate(180deg) scale(1.1);
+    }
+    100% {
+      transform: rotate(360deg) scale(1);
+    }
+  }
+
+  .vortex-animate {
+    animation: vortex 6s linear infinite;
+  }
+
+  /* Waveform Animation */
+  @keyframes wave {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-5px);
+    }
+    75% {
+      transform: translateX(5px);
+    }
+  }
+
+  .wave-animate {
+    animation: wave 1.5s ease-in-out infinite;
+  }
+
+  /* Glow Effect */
+  .glow {
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+
+  .glow-intense {
+    filter: drop-shadow(0 0 15px currentColor) drop-shadow(0 0 25px currentColor);
+  }
+
+  /* Smooth Page Transitions */
+  .page-enter {
+    animation: fadeInScale 0.6s ease-out;
+  }
+
+  .page-exit {
+    animation: fadeInScale 0.6s ease-out reverse;
   }
 
   /* Navigation item */

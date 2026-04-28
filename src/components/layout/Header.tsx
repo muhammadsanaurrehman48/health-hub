@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LogOut, Key, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import NotificationPanel from '@/components/notifications/NotificationPanel';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -70,17 +71,20 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="h-16 bg-header border-b border-header-border px-6 flex items-center justify-between sticky top-0 z-10">
+      <header className="h-16 bg-header border-b border-header-border px-6 flex items-center justify-between sticky top-0 z-10 transition-all duration-300 hover:shadow-md">
         {/* Page Title */}
-        <div>
-          <h2 className="text-lg font-semibold text-header-foreground">
+        <div className="transition-all duration-300">
+          <h2 className="text-lg font-semibold text-header-foreground transition-colors duration-300">
             {roleConfig.label} Dashboard
           </h2>
-          <p className="text-sm text-muted-foreground">{roleConfig.description}</p>
+          <p className="text-sm text-muted-foreground transition-colors duration-300">{roleConfig.description}</p>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 transition-all duration-300">
+          {/* Theme Toggle */}
+          <ThemeToggle />
+
           {/* Notifications */}
           <NotificationPanel />
 

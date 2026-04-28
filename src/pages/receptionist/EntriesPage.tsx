@@ -205,7 +205,6 @@ const EntriesPage: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('Error fetching entries:', error);
       toast.error('Failed to load entries');
     } finally {
       setLoading(false);

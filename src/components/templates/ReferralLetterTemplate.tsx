@@ -90,9 +90,9 @@ const ReferralLetterTemplate: React.FC<ReferralLetterTemplateProps> = ({ data })
         </head>
         <body>
           <div class="header">
-            <h1>ASF MEDICAL</h1>
-            <p>Health Management System</p>
-            <p>Karachi | Tel: 021-1234567 | Email: info@asfmedical.pk</p>
+            <h1>SMART HOSPITAL</h1>
+            <p>Management System</p>
+            <p>Comprehensive Health Management Solutions</p>
           </div>
           
           <div class="divider"></div>

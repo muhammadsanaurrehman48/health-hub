@@ -15,10 +15,10 @@ export const PrintHeader: React.FC<PrintHeaderProps> = ({
       {/* Header for Print */}
       <div className="text-center mb-6">
         <div className="flex items-center justify-center gap-3 mb-2">
-          <img src={Logo} alt="ASF Medical Center" className="w-12 h-12" />
+          <img src={Logo} alt="Smart Hospital Management System" className="w-16 h-16" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">ASF Medical Center</h1>
-            <p className="text-sm text-gray-700">Karachi</p>
+            <h1 className="text-2xl font-bold text-gray-900">Smart Hospital</h1>
+            <p className="text-sm text-gray-700">Management System</p>
           </div>
         </div>
         <hr className="my-2 border-gray-300" />
