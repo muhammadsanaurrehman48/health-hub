@@ -73,7 +73,7 @@ export const AnimatedBackground: React.FC = () => {
       // Get current theme colors
       const isDark = document.documentElement.classList.contains('dark');
       const color1 = isDark ? 'rgba(102, 204, 204, 0.1)' : 'rgba(26, 95, 122, 0.05)';
-      const color2 = isDark ? 'rgba(102, 153, 204, 0.05)' : 'rgba(166, 72% , 35%, 0.02)';
+      const color2 = isDark ? 'rgba(102, 153, 204, 0.05)' : 'rgba(166, 72, 35, 0.02)';
       const color3 = isDark ? 'rgba(102, 204, 204, 0)' : 'rgba(26, 95, 122, 0)';
 
       gradient.addColorStop(0, color1);

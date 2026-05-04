@@ -65,13 +65,26 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      const responseText = await response.text();
+      let data = null;
 
-      if (!response.ok) {
-        throw new Error(data.message || 'API request failed');
+      if (responseText) {
+        if (contentType.includes('application/json')) {
+          data = JSON.parse(responseText);
+        } else {
+          data = { message: responseText };
+        }
       }
 
-      return data;
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+          `API request failed with status ${response.status}${responseText ? `: ${responseText}` : ''}`
+        );
+      }
+
+      return data ?? {};
     } catch (error) {
       // Provide helpful network diagnostics when connection fails
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
