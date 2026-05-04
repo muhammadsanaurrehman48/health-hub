@@ -1,22 +1,33 @@
-// API Configuration - Smart URL Detection
-const API_BASE_URL = typeof window !== 'undefined' 
+// API Configuration - production-safe URL resolution
+const normalizeApiBase = (url) => (url || '').trim().replace(/\/$/, '');
+
+const isLocalHostLike = (hostname) => {
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return true;
+  }
+
+  // Local network IP ranges (10.x, 192.168.x, 172.16-31.x)
+  return /^(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/.test(hostname);
+};
+
+const API_BASE_URL = typeof window !== 'undefined'
   ? (() => {
-      const envUrl = import.meta.env.VITE_API_URL;
+      const envUrl = normalizeApiBase(import.meta.env.VITE_API_URL);
       if (envUrl) {
         return envUrl;
       }
-      
-      // Auto-detect API URL based on current location
+
       const hostname = window.location.hostname;
       const protocol = window.location.protocol;
-      
-      // If accessing from network IP, use that IP for API too
-      if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-        return `${protocol}//` + hostname + ':5000/api';
+
+      // For local/LAN development, target backend on the same host IP at port 5000.
+      if (isLocalHostLike(hostname)) {
+        return `${protocol}//${hostname}:5000/api`;
       }
-      
-      // Default to localhost
-      return 'http://localhost:5000/api';
+
+      // Production fallback when env var is missing.
+      // Prefer setting VITE_API_URL in Vercel to your Railway backend URL.
+      return '/api';
     })()
   : 'http://localhost:5000/api';
 
